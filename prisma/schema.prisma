@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum MemberStatus {
+  ACTIVE
+  BLOCKED
+  DEACTIVATED
+}
+
+enum SaleStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum CommissionType {
+  EARNING
+  REVERSAL
+}
+
+enum WalletTransactionType {
+  COMMISSION
+  COMMISSION_REVERSAL
+  PAYOUT
+  ADJUSTMENT
+}
+
+enum Language {
+  en
+  hi
+}
+
+enum FlagSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id                     String       @id @default(uuid())
+  email                  String       @unique
+  passwordHash           String       @map("password_hash")
+  name                   String
+  phone                  String       @unique
+  role                   Role         @default(MEMBER)
+  sponsorId              String?      @map("sponsor_id")
+  sponsor                User?        @relation("SponsorRelation", fields: [sponsorId], references: [id])
+  sponsored              User[]       @relation("SponsorRelation")
+  parentId               String?      @map("parent_id")
+  parent                 User?        @relation("TreeRelation", fields: [parentId], references: [id])
+  children               User[]       @relation("TreeRelation")
+  position               Int?
+  depth                  Int          @default(0)
+  path                   String       @default("/")
+  referralCode           String       @unique @map("referral_code")
+  status                 MemberStatus @default(ACTIVE)
+  preferredLanguage      Language     @default(en)
+  hasCompletedOnboarding Boolean      @default(false) @map("has_completed_onboarding")
+  registrationIp         String?      @map("registration_ip")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+
+  sales               Sale[]       @relation("MemberSales")
+  approvedSales        Sale[]       @relation("ApprovedBy")
+  commissionsEarned    Commission[] @relation("Beneficiary")
+  commissionsSourced   Commission[] @relation("SourceMember")
+  wallet               Wallet?
+  createdTransactions  WalletTransaction[] @relation("TransactionCreator")
+  notifications        Notification[]
+
+  @@unique([parentId, position])
+  @@map("users")
+}
+
+model Sale {
+  id              String     @id @default(uuid())
+  memberId        String     @map("member_id")
+  member          User       @relation("MemberSales", fields: [memberId], references: [id])
+  billCode        String     @unique @map("bill_code")
+  totalAmount     Decimal    @map("total_amount") @db.Decimal(10, 2)
+  customerName    String     @map("customer_name")
+  customerPhone   String?    @map("customer_phone")
+  saleDate        DateTime   @map("sale_date") @db.Date
+  billPhotoPath   String?    @map("bill_photo_path")
+  status          SaleStatus @default(PENDING)
+  rejectionReason String?    @map("rejection_reason")
+  returnReason    String?    @map("return_reason")
+  returnedAt      DateTime?  @map("returned_at")
+  approvedById    String?    @map("approved_by")
+  approvedBy      User?      @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?  @map("approved_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  commissions Commission[]
+  saleItems   SaleItem[]
+  saleFlags   SaleFlag[]
+
+  @@index([memberId])
+  @@index([status])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  saleId    String  @map("sale_id")
+  sale      Sale    @relation(fields: [saleId], references: [id])
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+
+  @@map("sale_items")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  nameHi        String?  @map("name_hi")
+  description   String?
+  descriptionHi String?  @map("description_hi")
+  price         Decimal  @db.Decimal(10, 2)
+  sku           String?  @unique
+  category      String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  saleItems SaleItem[]
+
+  @@map("products")
+}
+
+model Commission {
+  id             String         @id @default(uuid())
+  saleId         String         @map("sale_id")
+  sale           Sale           @relation(fields: [saleId], references: [id])
+  beneficiaryId  String         @map("beneficiary_id")
+  beneficiary    User           @relation("Beneficiary", fields: [beneficiaryId], references: [id])
+  sourceMemberId String         @map("source_member_id")
+  sourceMember   User           @relation("SourceMember", fields: [sourceMemberId], references: [id])
+  level          Int
+  percentage     Decimal        @db.Decimal(5, 2)
+  amount         Decimal        @db.Decimal(10, 2)
+  type           CommissionType @default(EARNING)
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  walletTransaction WalletTransaction?
+
+  @@index([saleId])
+  @@index([beneficiaryId])
+  @@index([sourceMemberId])
+  @@map("commissions")
+}
+
+model CommissionSetting {
+  id         String   @id @default(uuid())
+  level      Int      @unique
+  percentage Decimal  @db.Decimal(5, 2)
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("commission_settings")
+}
+
+model Wallet {
+  id          String   @id @default(uuid())
+  userId      String   @unique @map("user_id")
+  user        User     @relation(fields: [userId], references: [id])
+  totalEarned Decimal  @default(0) @map("total_earned") @db.Decimal(12, 2)
+  pending     Decimal  @default(0) @db.Decimal(12, 2)
+  paidOut     Decimal  @default(0) @map("paid_out") @db.Decimal(12, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id           String                @id @default(uuid())
+  walletId     String                @map("wallet_id")
+  wallet       Wallet                @relation(fields: [walletId], references: [id])
+  type         WalletTransactionType
+  amount       Decimal               @db.Decimal(10, 2)
+  description  String?
+  referenceId  String?               @unique @map("reference_id")
+  commission   Commission?           @relation(fields: [referenceId], references: [id])
+  createdById  String?               @map("created_by")
+  createdBy    User?                 @relation("TransactionCreator", fields: [createdById], references: [id])
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  @@index([walletId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("wallet_transactions")
+}
+
+model SaleFlag {
+  id        String       @id @default(uuid())
+  saleId    String       @map("sale_id")
+  sale      Sale         @relation(fields: [saleId], references: [id])
+  type      String
+  severity  FlagSeverity
+  details   String?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@index([saleId])
+  @@map("sale_flags")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  titleHi   String?  @map("title_hi")
+  body      String?
+  bodyHi    String?  @map("body_hi")
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  action     String
+  entity     String
+  entityId   String?  @map("entity_id")
+  details    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}
