@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 type SaleStatus = "PENDING" | "APPROVED" | "REJECTED" | "RETURNED";
 
@@ -95,22 +95,65 @@ export default function AdminSalesPage() {
     { beneficiaryId: string; beneficiaryName: string; level: number; amount: string }[]
   >([]);
   const [returnPreviewLoading, setReturnPreviewLoading] = useState(false);
+  const salesFetchControllerRef = useRef<AbortController | null>(null);
+  const salesFetchRequestIdRef = useRef(0);
 
   const fetchSales = useCallback(async () => {
+    salesFetchControllerRef.current?.abort();
+    const controller = new AbortController();
+    salesFetchControllerRef.current = controller;
+    const requestId = ++salesFetchRequestIdRef.current;
     setLoading(true);
-    const statusParam = activeTab === "all" ? "" : `&status=${activeTab}`;
-    const res = await fetch(`/api/admin/sales?page=${page}&limit=20${statusParam}`);
-    if (res.ok) {
+    try {
+      const statusParam = activeTab === "all" ? "" : `&status=${activeTab}`;
+      const res = await fetch(
+        `/api/admin/sales?page=${page}&limit=20${statusParam}&_t=${requestId}`,
+        {
+          cache: "no-store",
+          signal: controller.signal,
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Failed to load sales: ${res.status}`);
+      }
+
       const data = await res.json();
+      if (controller.signal.aborted || requestId !== salesFetchRequestIdRef.current) {
+        return;
+      }
+
       setSales(data.sales);
       setTotalPages(data.pagination.totalPages);
       setTotal(data.pagination.total);
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (requestId === salesFetchRequestIdRef.current) {
+        setSales([]);
+        setTotalPages(1);
+        setTotal(0);
+      }
+    } finally {
+      if (
+        !controller.signal.aborted &&
+        requestId === salesFetchRequestIdRef.current
+      ) {
+        setLoading(false);
+      }
+      if (salesFetchControllerRef.current === controller) {
+        salesFetchControllerRef.current = null;
+      }
     }
-    setLoading(false);
   }, [activeTab, page]);
 
   useEffect(() => {
-    fetchSales();
+    void fetchSales();
+    return () => {
+      salesFetchControllerRef.current?.abort();
+      salesFetchControllerRef.current = null;
+    };
   }, [fetchSales]);
 
   useEffect(() => {

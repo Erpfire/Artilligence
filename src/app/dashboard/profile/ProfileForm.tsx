@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import type { Locale } from "@/lib/i18n";
 
@@ -34,17 +34,30 @@ export default function ProfileForm() {
   const [pwMsg, setPwMsg] = useState("");
   const [pwError, setPwError] = useState("");
 
-  useEffect(() => {
-    fetch("/api/dashboard/profile")
-      .then((res) => res.json())
-      .then((data) => {
-        setProfile(data);
-        setName(data.name);
-        setPhone(data.phone);
-        setLanguage(data.preferredLanguage);
-        setLoading(false);
-      });
+  const loadProfile = useCallback(async (signal?: AbortSignal) => {
+    const res = await fetch("/api/dashboard/profile", {
+      cache: "no-store",
+      signal,
+    });
+    const data = await res.json();
+    setProfile(data);
+    setName(data.name);
+    setPhone(data.phone);
+    setLanguage(data.preferredLanguage);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    loadProfile(controller.signal).catch(() => {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    });
+
+    return () => controller.abort();
+  }, [loadProfile]);
 
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
@@ -61,6 +74,9 @@ export default function ProfileForm() {
       if (res.ok) {
         const updated = await res.json();
         setProfile(updated);
+        setName(updated.name);
+        setPhone(updated.phone);
+        setLanguage(updated.preferredLanguage);
         setProfileMsg(t("profile.saved"));
         // Update language context if changed
         if (language !== locale) {

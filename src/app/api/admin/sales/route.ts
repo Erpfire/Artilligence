@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user || session.user.role !== "ADMIN") {
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
     prisma.sale.count({ where }),
   ]);
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     sales: sales.map((s) => ({
       id: s.id,
       billCode: s.billCode,
@@ -104,4 +106,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / limit),
     },
   });
+
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  return response;
 }

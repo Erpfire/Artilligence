@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { resetRateLimit } from "@/lib/rate-limit";
 
 export async function POST() {
   if (process.env.NODE_ENV === "production") {
