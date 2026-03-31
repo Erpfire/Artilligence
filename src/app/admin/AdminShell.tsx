@@ -4,13 +4,19 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
+import NotificationBell from "@/components/NotificationBell";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: "grid" },
   { href: "/admin/products", label: "Products", icon: "package" },
   { href: "/admin/members", label: "Members", icon: "users" },
   { href: "/admin/sales", label: "Sales", icon: "receipt" },
+  { href: "/admin/wallets", label: "Wallets", icon: "wallet" },
+  { href: "/admin/commissions", label: "Commissions", icon: "percent" },
+  { href: "/admin/announcements", label: "Announcements", icon: "megaphone" },
   { href: "/admin/tree", label: "Tree", icon: "tree" },
+  { href: "/admin/reports", label: "Reports", icon: "chart" },
+  { href: "/admin/audit-log", label: "Audit Log", icon: "shield" },
   { href: "/admin/settings", label: "Settings", icon: "settings" },
 ];
 
@@ -44,6 +50,38 @@ function NavIcon({ icon }: { icon: string }) {
       return (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+        </svg>
+      );
+    case "wallet":
+      return (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      );
+    case "megaphone":
+      return (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      );
+    case "percent":
+      return (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h0m6 10h0M7.5 4.5l9 15" />
+          <circle cx="9" cy="7" r="2" fill="none" stroke="currentColor" strokeWidth={2} />
+          <circle cx="15" cy="17" r="2" fill="none" stroke="currentColor" strokeWidth={2} />
+        </svg>
+      );
+    case "chart":
+      return (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      );
+    case "shield":
+      return (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
         </svg>
       );
     case "settings":
@@ -249,6 +287,8 @@ export default function AdminShell({
           </div>
 
           <div className="flex items-center gap-4">
+            <NotificationBell locale="en" notificationsPath="/dashboard/notifications" />
+
             <span className="text-sm text-gray-600" data-testid="admin-name">
               {userName}
             </span>

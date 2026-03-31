@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useToast } from "@/components/Toast";
+import { ProfileSkeleton } from "@/components/Skeleton";
 import type { Locale } from "@/lib/i18n";
 
 interface Profile {
@@ -15,6 +17,7 @@ interface Profile {
 
 export default function ProfileForm() {
   const { t, locale, setLocale } = useLanguage();
+  const { showToast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +80,7 @@ export default function ProfileForm() {
         setName(updated.name);
         setPhone(updated.phone);
         setLanguage(updated.preferredLanguage);
+        showToast(t("profile.saved"), "success");
         setProfileMsg(t("profile.saved"));
         // Update language context if changed
         if (language !== locale) {
@@ -114,6 +118,7 @@ export default function ProfileForm() {
         body: JSON.stringify({ currentPassword, newPassword }),
       });
       if (res.ok) {
+        showToast(t("profile.passwordChanged"), "success");
         setPwMsg(t("profile.passwordChanged"));
         setCurrentPassword("");
         setNewPassword("");
@@ -133,11 +138,7 @@ export default function ProfileForm() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="text-gray-500">{t("common.loading")}</div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   return (

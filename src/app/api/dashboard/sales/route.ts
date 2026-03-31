@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { saveUploadedFile } from "@/lib/upload";
+import { sanitizeText } from "@/lib/sanitize";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -93,12 +94,17 @@ export async function POST(request: NextRequest) {
   }
   if (!customerName || !customerName.trim()) {
     errors.customerName = "Customer name is required";
+  } else if (customerName.length > 200) {
+    errors.customerName = "Customer name is too long";
   }
   if (!customerPhone || !customerPhone.trim()) {
     errors.customerPhone = "Customer phone is required";
   }
   if (!billPhoto) {
     errors.billPhoto = "Bill photo is required";
+  }
+  if (billCode && billCode.length > 100) {
+    errors.billCode = "Bill code is too long";
   }
 
   let items: { productId: string; quantity: number }[] = [];
@@ -109,6 +115,18 @@ export async function POST(request: NextRequest) {
   }
   if (items.length === 0) {
     errors.items = "At least one product is required";
+  }
+
+  // Validate item quantities
+  for (const item of items) {
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      errors.items = "All product quantities must be positive whole numbers";
+      break;
+    }
+    if (item.quantity > 10000) {
+      errors.items = "Quantity cannot exceed 10,000";
+      break;
+    }
   }
 
   if (Object.keys(errors).length > 0) {
@@ -254,6 +272,14 @@ export async function POST(request: NextRequest) {
     };
   });
 
+  // Reject zero-amount sales
+  if (totalAmount <= 0) {
+    return NextResponse.json(
+      { errors: { _form: "Sale total must be greater than zero" } },
+      { status: 400 }
+    );
+  }
+
   // --- Create sale + items in transaction ---
   const sale = await prisma.$transaction(async (tx) => {
     const newSale = await tx.sale.create({
@@ -262,7 +288,7 @@ export async function POST(request: NextRequest) {
         memberId: userId,
         billCode: billCode!,
         totalAmount,
-        customerName: customerName!.trim(),
+        customerName: sanitizeText(customerName!, 200),
         customerPhone: customerPhone!.trim(),
         saleDate: new Date(saleDate!),
         billPhotoPath: uploadResult.filePath,

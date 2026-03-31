@@ -8,6 +8,14 @@ type RateLimitEntry = {
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ATTEMPTS = 5;
+
+// Configurable limits per endpoint type
+const RATE_LIMITS: Record<string, { window: number; max: number }> = {
+  login: { window: WINDOW_MS, max: 5 },
+  register: { window: WINDOW_MS, max: 10 },
+  "change-password": { window: WINDOW_MS, max: 5 },
+  api: { window: 60 * 1000, max: 60 }, // 60 requests per minute for general API
+};
 const globalKey = "__rate_limit_attempts__";
 const rateLimitStorePath =
   process.env.NODE_ENV === "production"
@@ -64,11 +72,14 @@ function writeRateLimitStore(entries: Record<string, RateLimitEntry>) {
 }
 
 export function checkRateLimit(
-  key: string
+  key: string,
+  endpoint?: string
 ): { allowed: boolean; retryAfterMs?: number } {
   const now = Date.now();
   const entries = readRateLimitStore();
   pruneStaleEntries(entries, now);
+
+  const limits = (endpoint && RATE_LIMITS[endpoint]) || { window: WINDOW_MS, max: MAX_ATTEMPTS };
 
   const entry = entries[key];
 
@@ -78,11 +89,18 @@ export function checkRateLimit(
     return { allowed: true };
   }
 
-  if (entry.count >= MAX_ATTEMPTS) {
+  // Reset if window has passed
+  if (now - entry.firstAttempt > limits.window) {
+    entries[key] = { count: 1, firstAttempt: now };
+    writeRateLimitStore(entries);
+    return { allowed: true };
+  }
+
+  if (entry.count >= limits.max) {
     writeRateLimitStore(entries);
     return {
       allowed: false,
-      retryAfterMs: WINDOW_MS - (now - entry.firstAttempt),
+      retryAfterMs: limits.window - (now - entry.firstAttempt),
     };
   }
 

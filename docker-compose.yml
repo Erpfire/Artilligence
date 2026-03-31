@@ -3,31 +3,50 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: artilligence
-      POSTGRES_PASSWORD: artilligence_dev
-      POSTGRES_DB: artilligence
-    ports:
-      - "5434:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-artilligence}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-artilligence_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-artilligence}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-artilligence} -d ${POSTGRES_DB:-artilligence}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   app:
     build:
       context: .
-      target: dev
+      target: production
     restart: unless-stopped
     ports:
-      - "3005:3000"
+      - "${APP_PORT:-3000}:3000"
     volumes:
-      - .:/app
-      - /app/node_modules
       - uploads:/app/uploads
     environment:
-      DATABASE_URL: postgresql://artilligence:artilligence_dev@db:5432/artilligence
-      NEXTAUTH_SECRET: dev-secret-change-in-production
-      NEXTAUTH_URL: http://localhost:3005
+      DATABASE_URL: postgresql://${POSTGRES_USER:-artilligence}:${POSTGRES_PASSWORD:-artilligence_dev}@db:5432/${POSTGRES_DB:-artilligence}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-dev-secret-change-in-production}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
+  seed:
+    build:
+      context: .
+      target: dev
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-artilligence}:${POSTGRES_PASSWORD:-artilligence_dev}@db:5432/${POSTGRES_DB:-artilligence}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@artilligence.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123456}
+      ROOT_PASSWORD: ${ROOT_PASSWORD:-member123456}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - seed
+    command: npx prisma db seed
 
 volumes:
   pgdata:

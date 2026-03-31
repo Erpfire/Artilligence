@@ -219,6 +219,18 @@ export async function PATCH(
       });
     }
 
+    // Notify the member that their sale was approved
+    await prisma.notification.create({
+      data: {
+        userId: sale.memberId,
+        title: `Sale ${sale.billCode} approved`,
+        titleHi: `बिक्री ${sale.billCode} स्वीकृत`,
+        body: `Your sale of ₹${Number(sale.totalAmount).toFixed(2)} has been approved.`,
+        bodyHi: `आपकी ₹${Number(sale.totalAmount).toFixed(2)} की बिक्री स्वीकृत हो गई है।`,
+        link: "/dashboard/sales",
+      },
+    });
+
     return NextResponse.json({
       sale: { id: params.id, status: "APPROVED" },
       commissions,
@@ -250,6 +262,18 @@ export async function PATCH(
           billCode: sale.billCode,
           reason: reason.trim(),
         }),
+      },
+    });
+
+    // Notify the member that their sale was rejected
+    await prisma.notification.create({
+      data: {
+        userId: sale.memberId,
+        title: `Sale ${sale.billCode} rejected`,
+        titleHi: `बिक्री ${sale.billCode} अस्वीकृत`,
+        body: `Your sale has been rejected. Reason: ${reason.trim()}`,
+        bodyHi: `आपकी बिक्री अस्वीकृत हो गई है। कारण: ${reason.trim()}`,
+        link: "/dashboard/sales",
       },
     });
 

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sanitizeText } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -44,13 +45,14 @@ export async function PATCH(request: NextRequest) {
   const updateData: Record<string, unknown> = {};
 
   if (body.name !== undefined) {
-    if (!body.name || body.name.trim().length === 0) {
+    const sanitizedName = sanitizeText(body.name, 100);
+    if (!sanitizedName) {
       return NextResponse.json(
         { error: "Name is required" },
         { status: 400 }
       );
     }
-    updateData.name = body.name.trim();
+    updateData.name = sanitizedName;
   }
 
   if (body.phone !== undefined) {

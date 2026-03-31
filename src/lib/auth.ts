@@ -1,6 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { checkRateLimit } from "./rate-limit";
 
@@ -65,11 +65,30 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
       }
+      // Check if user is still active on every token refresh
+      if (token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { status: true },
+          });
+          if (!dbUser || dbUser.status === "BLOCKED" || dbUser.status === "DEACTIVATED") {
+            // Invalidate the token by clearing the id
+            return { ...token, id: null, blocked: true };
+          }
+        } catch {
+          // DB errors should not break auth flow
+        }
+      }
       return token;
     },
     async session({ session, token }) {
+      if (token.blocked || !token.id) {
+        // Return a session that signals the client to log out
+        return { ...session, user: { ...session.user, id: null, blocked: true } } as any;
+      }
       if (session.user) {
-        session.user.id = token.id;
+        (session.user as any).id = token.id;
         session.user.role = token.role;
       }
       return session;

@@ -101,7 +101,10 @@ export default async function globalSetup(config: FullConfig) {
   await waitForApp(baseURL);
   await resetRateLimiter(baseURL);
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined,
+  });
   try {
     await warmAdminSales(baseURL, browser);
     await resetRateLimiter(baseURL);

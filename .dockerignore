@@ -4,3 +4,7 @@ node_modules
 docs
 *.md
 .env*.local
+e2e
+tests
+playwright-report
+test-results

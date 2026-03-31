@@ -3,8 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/components/LanguageProvider";
-import { formatINR } from "@/lib/i18n";
+import { formatINR, formatDate } from "@/lib/i18n";
+import { DashboardSkeleton } from "@/components/Skeleton";
 import OnboardingTour from "./OnboardingTour";
+
+interface PinnedAnnouncement {
+  id: string;
+  titleEn: string;
+  titleHi: string | null;
+  contentEn: string;
+  contentHi: string | null;
+  isPinned: boolean;
+  createdAt: string;
+}
 
 interface DashboardStats {
   wallet: { totalEarned: string; pending: string; paidOut: string };
@@ -27,12 +38,13 @@ interface DashboardStats {
 type Period = "today" | "week" | "month" | "all";
 
 export default function DashboardHome({ showOnboarding }: { showOnboarding: boolean }) {
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [period, setPeriod] = useState<Period>("all");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [runOnboarding, setRunOnboarding] = useState(false);
+  const [pinnedAnnouncements, setPinnedAnnouncements] = useState<PinnedAnnouncement[]>([]);
 
   const fetchStats = useCallback(async (p: Period) => {
     setLoading(true);
@@ -50,6 +62,13 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
   useEffect(() => {
     fetchStats(period);
   }, [period, fetchStats]);
+
+  useEffect(() => {
+    fetch("/api/dashboard/announcements")
+      .then((r) => r.ok ? r.json() : { announcements: [] })
+      .then((data) => setPinnedAnnouncements(data.announcements.filter((a: PinnedAnnouncement) => a.isPinned)))
+      .catch(() => {});
+  }, []);
 
   // Trigger onboarding after data loads
   useEffect(() => {
@@ -79,11 +98,7 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
   ];
 
   if (loading && !stats) {
-    return (
-      <div className="flex items-center justify-center py-20" data-testid="dashboard-loading">
-        <div className="text-gray-500">{t("common.loading")}</div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!stats) return null;
@@ -188,6 +203,38 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
         </Link>
       </div>
 
+      {/* Pinned announcements widget */}
+      {pinnedAnnouncements.length > 0 && (
+        <div className="mt-6" data-testid="pinned-announcements-widget">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">{t("announcements.latestPinned")}</h2>
+            <Link
+              href="/dashboard/announcements"
+              className="text-sm font-medium text-primary hover:underline"
+              data-testid="view-all-announcements-link"
+            >
+              {t("announcements.viewAll")}
+            </Link>
+          </div>
+          <div className="mt-3 space-y-2">
+            {pinnedAnnouncements.slice(0, 3).map((a) => (
+              <div
+                key={a.id}
+                className="rounded-lg border border-amber-300 bg-amber-50 p-4"
+                data-testid={`pinned-widget-${a.id}`}
+              >
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {locale === "hi" && a.titleHi ? a.titleHi : a.titleEn}
+                </h3>
+                <p className="mt-1 text-sm text-gray-700 line-clamp-2">
+                  {locale === "hi" && a.contentHi ? a.contentHi : a.contentEn}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent commissions */}
       <div className="mt-6" data-testid="recent-commissions">
         <h2 className="text-lg font-semibold text-gray-900">{t("dashboard.commissions.title")}</h2>
@@ -196,30 +243,45 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
             {t("dashboard.commissions.empty")}
           </div>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-lg bg-white shadow-sm border">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
-                <tr>
-                  <th className="px-4 py-3">{t("dashboard.commissions.level")}</th>
-                  <th className="px-4 py-3">Bill Code</th>
-                  <th className="px-4 py-3">From</th>
-                  <th className="px-4 py-3 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {stats.recentCommissions.map((c) => (
-                  <tr key={c.id} data-testid={`commission-row-${c.id}`}>
-                    <td className="px-4 py-3">L{c.level}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{c.billCode}</td>
-                    <td className="px-4 py-3">{c.sourceMemberName}</td>
-                    <td className="px-4 py-3 text-right font-medium text-green-600">
-                      {formatINR(c.amount)}
-                    </td>
+          <>
+            {/* Desktop table */}
+            <div className="mt-3 hidden sm:block overflow-x-auto rounded-lg bg-white shadow-sm border">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-3">{t("dashboard.commissions.level")}</th>
+                    <th className="px-4 py-3">{t("dashboard.commissions.billCode")}</th>
+                    <th className="px-4 py-3">{t("dashboard.commissions.from")}</th>
+                    <th className="px-4 py-3 text-right">{t("dashboard.commissions.amount")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {stats.recentCommissions.map((c) => (
+                    <tr key={c.id} data-testid={`commission-row-${c.id}`}>
+                      <td className="px-4 py-3">L{c.level}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{c.billCode}</td>
+                      <td className="px-4 py-3">{c.sourceMemberName}</td>
+                      <td className="px-4 py-3 text-right font-medium text-green-600">
+                        {formatINR(c.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Mobile cards */}
+            <div className="mt-3 sm:hidden space-y-2" data-testid="commissions-cards">
+              {stats.recentCommissions.map((c) => (
+                <div key={c.id} className="rounded-lg border bg-white p-3 shadow-sm" data-testid={`commission-card-${c.id}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">L{c.level} — {c.sourceMemberName}</span>
+                    <span className="font-medium text-green-600">{formatINR(c.amount)}</span>
+                  </div>
+                  <p className="mt-1 font-mono text-xs text-gray-500">{c.billCode}</p>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useToast } from "@/components/Toast";
 import { formatINR } from "@/lib/i18n";
 
 interface Product {
@@ -29,6 +30,7 @@ export default function SaleForm({
   onCancel: () => void;
 }) {
   const { t, locale } = useLanguage();
+  const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [billCode, setBillCode] = useState("");
   const [saleDate, setSaleDate] = useState("");
@@ -140,6 +142,7 @@ export default function SaleForm({
     }
 
     setSuccessMessage(t("sales.submitted"));
+    showToast(t("sales.submitted"), "success");
     setTimeout(() => onSubmitted(), 1000);
   }
 

@@ -230,12 +230,29 @@ model Notification {
   titleHi   String?  @map("title_hi")
   body      String?
   bodyHi    String?  @map("body_hi")
+  link      String?
   isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  titleEn   String   @map("title_en")
+  titleHi   String?  @map("title_hi")
+  contentEn String   @map("content_en") @db.Text
+  contentHi String?  @map("content_hi") @db.Text
+  isPinned  Boolean  @default(false) @map("is_pinned")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@index([isPinned])
+  @@map("announcements")
 }
 
 model AuditLog {
@@ -252,10 +269,50 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model CommissionRateHistory {
+  id            String   @id @default(uuid())
+  level         Int
+  oldPercentage Decimal? @map("old_percentage") @db.Decimal(5, 2)
+  newPercentage Decimal? @map("new_percentage") @db.Decimal(5, 2)
+  action        String   // UPDATED, ADDED, REMOVED
+  changedById   String   @map("changed_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([level])
+  @@index([createdAt])
+  @@map("commission_rate_history")
+}
+
 model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("app_settings")
+}
+
+enum ReportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model ReportJob {
+  id          String          @id @default(uuid())
+  type        String          // sales, commissions, members, payouts, top-performers, tree-overview, financial-year, monthly-payout
+  format      String          // pdf, excel
+  filters     String?         @db.Text // JSON-encoded filters
+  status      ReportJobStatus @default(PENDING)
+  progress    Int             @default(0) // 0-100
+  filePath    String?         @map("file_path")
+  error       String?
+  totalRows   Int?            @map("total_rows")
+  createdById String          @map("created_by")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  completedAt DateTime?       @map("completed_at")
+
+  @@index([createdById])
+  @@index([status])
+  @@map("report_jobs")
 }

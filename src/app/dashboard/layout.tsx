@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/auth-check";
 import { prisma } from "@/lib/db";
 import LanguageProvider from "@/components/LanguageProvider";
+import ToastProvider from "@/components/Toast";
 import DashboardShell from "./DashboardShell";
 import type { Locale } from "@/lib/i18n";
 
@@ -20,9 +21,11 @@ export default async function DashboardLayout({
 
   return (
     <LanguageProvider initialLocale={locale}>
-      <DashboardShell userName={session.user.name || "Member"}>
-        {children}
-      </DashboardShell>
+      <ToastProvider>
+        <DashboardShell userName={session.user.name || "Member"}>
+          {children}
+        </DashboardShell>
+      </ToastProvider>
     </LanguageProvider>
   );
 }

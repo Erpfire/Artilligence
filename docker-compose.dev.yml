@@ -1,0 +1,16 @@
+services:
+  db:
+    ports:
+      - "5434:5432"
+
+  app:
+    build:
+      target: dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - uploads:/app/uploads
+    environment:
+      DATABASE_URL: postgresql://artilligence:artilligence_dev@db:5432/artilligence
+      NEXTAUTH_SECRET: dev-secret-change-in-production
+      NEXTAUTH_URL: http://localhost:3005

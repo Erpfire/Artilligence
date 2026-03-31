@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { sanitizeText, validateLength } from "@/lib/sanitize";
 
 function generateReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -13,16 +15,33 @@ function generateReferralCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit registration by IP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rateCheck = checkRateLimit(`register:${ip}`, "register");
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { errors: [{ field: "general", message: "Too many registration attempts. Please try again later." }] },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
-    const { name, email, phone, password, confirmPassword, referralCode, preferredLanguage } = body;
+    const { email, phone, password, confirmPassword, referralCode, preferredLanguage } = body;
+    // Sanitize name input
+    const name = body.name ? sanitizeText(body.name, 100) : "";
 
     // Basic validation
     const errors: Array<{ field: string; message: string }> = [];
 
-    if (!name?.trim()) errors.push({ field: "name", message: "Name is required" });
+    if (!name) errors.push({ field: "name", message: "Name is required" });
     if (!email?.trim()) errors.push({ field: "email", message: "Email is required" });
     if (!phone?.trim()) errors.push({ field: "phone", message: "Phone is required" });
     if (!password) errors.push({ field: "password", message: "Password is required" });
+
+    // Length validation
+    if (name && name.length > 100) errors.push({ field: "name", message: "Name must be 100 characters or less" });
+    if (email && email.length > 255) errors.push({ field: "email", message: "Email is too long" });
+    if (password && password.length > 128) errors.push({ field: "password", message: "Password is too long" });
 
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.push({ field: "email", message: "Invalid email format" });
@@ -97,10 +116,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // BFS placement: find position under sponsor's subtree
-    const placement = await findPlacementPosition(sponsor.id);
-
-    // Hash password
+    // Hash password (outside transaction for performance)
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Generate unique referral code
@@ -109,42 +125,67 @@ export async function POST(req: NextRequest) {
       newReferralCode = generateReferralCode();
     }
 
-    // Get registration IP
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+    // Create user + wallet in a transaction with row locking to prevent concurrent position conflicts
+    // Retry up to 3 times in case of lock contention from concurrent registrations
+    let user;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        user = await prisma.$transaction(async (tx) => {
+          // BFS placement INSIDE the transaction with row locking
+          const placement = await findPlacementPositionWithLock(tx, sponsor.id);
 
-    // Create user + wallet in a transaction
-    const user = await prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          email,
-          passwordHash,
-          name: name.trim(),
-          phone: normalizedPhone,
-          role: "MEMBER",
-          sponsorId: sponsor.id,
-          parentId: placement.parentId,
-          position: placement.position,
-          depth: placement.depth,
-          path: placement.path,
-          referralCode: newReferralCode,
-          preferredLanguage: preferredLanguage === "hi" ? "hi" : "en",
-          registrationIp: ip,
-        },
-      });
+          const newUser = await tx.user.create({
+            data: {
+              email,
+              passwordHash,
+              name,
+              phone: normalizedPhone,
+              role: "MEMBER",
+              sponsorId: sponsor.id,
+              parentId: placement.parentId,
+              position: placement.position,
+              depth: placement.depth,
+              path: placement.path,
+              referralCode: newReferralCode,
+              preferredLanguage: preferredLanguage === "hi" ? "hi" : "en",
+              registrationIp: ip,
+            },
+          });
 
-      // Update path with actual user ID
-      const correctPath = placement.path.replace(/[^/]+$/, newUser.id);
-      await tx.user.update({
-        where: { id: newUser.id },
-        data: { path: correctPath },
-      });
+          // Update path with actual user ID
+          const correctPath = placement.path.replace(/[^/]+$/, newUser.id);
+          await tx.user.update({
+            where: { id: newUser.id },
+            data: { path: correctPath },
+          });
 
-      // Create wallet
-      await tx.wallet.create({
-        data: { userId: newUser.id },
-      });
+          // Create wallet
+          await tx.wallet.create({
+            data: { userId: newUser.id },
+          });
 
-      return newUser;
+          return newUser;
+        }, {
+          timeout: 15000,
+        });
+        break; // Success — exit retry loop
+      } catch (txError: any) {
+        if (attempt === 2) throw txError; // Last attempt — rethrow
+        // Wait a bit before retrying (back off)
+        await new Promise((r) => setTimeout(r, 100 * (attempt + 1)));
+      }
+    }
+
+    // Notify sponsor about new team member
+    await prisma.notification.create({
+      data: {
+        userId: sponsor.id,
+        title: `New team member: ${name}`,
+        titleHi: `नया टीम सदस्य: ${name}`,
+        body: `${name} has joined your team using your referral link.`,
+        bodyHi: `${name} आपकी रेफरल लिंक से आपकी टीम में शामिल हो गए हैं।`,
+        link: "/dashboard/team",
+      },
     });
 
     // IP-based fraud flagging
@@ -159,7 +200,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, userId: user.id }, { status: 201 });
+    return NextResponse.json({ success: true, userId: user!.id }, { status: 201 });
   } catch (error: any) {
     console.error("Registration error:", error);
     return NextResponse.json(
@@ -169,23 +210,26 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// BFS tree placement using Prisma
-async function findPlacementPosition(sponsorId: string) {
-  const sponsor = await prisma.user.findUnique({
-    where: { id: sponsorId },
-    select: { id: true, depth: true, path: true },
-  });
-  if (!sponsor) throw new Error("Sponsor not found");
+// BFS tree placement with row locking inside a transaction
+async function findPlacementPositionWithLock(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  sponsorId: string
+) {
+  // Lock the sponsor row to prevent concurrent placements
+  const sponsorRows = await tx.$queryRaw<Array<{ id: string; depth: number; path: string }>>`
+    SELECT id, depth, path FROM users WHERE id = ${sponsorId} FOR UPDATE
+  `;
+  if (sponsorRows.length === 0) throw new Error("Sponsor not found");
+  const sponsor = sponsorRows[0];
 
   const queue = [sponsor];
 
   while (queue.length > 0) {
     const node = queue.shift()!;
-    const children = await prisma.user.findMany({
-      where: { parentId: node.id },
-      select: { id: true, depth: true, path: true, position: true },
-      orderBy: { position: "asc" },
-    });
+    // Lock child rows to prevent concurrent inserts at the same position
+    const children = await tx.$queryRaw<Array<{ id: string; depth: number; path: string; position: number }>>`
+      SELECT id, depth, path, position FROM users WHERE parent_id = ${node.id} ORDER BY position ASC FOR UPDATE
+    `;
 
     if (children.length < 3) {
       const position = children.length + 1;

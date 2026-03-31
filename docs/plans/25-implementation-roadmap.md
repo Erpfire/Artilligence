@@ -39,6 +39,25 @@ Playwright testing covers:
 - Responsive behavior (mobile + desktop)
 - Cross-feature interactions where applicable
 
+### Rule 5: Real UI Flows, Not Just SQL Inserts
+E2E tests MUST include tests where data is created through the actual UI, not only via direct SQL inserts. SQL inserts are acceptable for setting up supporting data (tree structures, filter/pagination tests), but the core flow under test must go through the real UI so the full stack is exercised.
+
+### Rule 6: Checkpoint Report Format
+After completing every Playwright testing task, automatically print a checkpoint report:
+1. Line-by-line comparison: roadmap test requirement vs actual test written
+2. Count of extra tests beyond roadmap requirements
+3. Whether tests use real UI flows or only SQL inserts
+4. Clear verdict: "Tested extensively — no corners cut" or "Corners cut — going back to add: [list]"
+Do NOT wait for the user to ask. Print proactively.
+
+### Rule 7: Full UI Integration Tests After All Phases Are Complete
+After ALL implementation phases are finished, create `e2e/integration.spec.ts` with full end-to-end flows that span multiple modules using ONLY the UI (no SQL inserts for core data). See `memory/project_ui_testing_gaps.md` for the full list of modules with gaps. Priority flows:
+1. Sale → Approve → Commission → Wallet (member submits sale via UI → admin approves via UI → member wallet page shows commission)
+2. Sale → Approve → Return → Reversal → Wallet (full return flow through UI)
+3. Sale → Approve → Commission → Payout → Wallet invariant check
+4. Multi-level commission flow (register chain via UI → sale → approve → verify commissions at each level)
+5. Blocked member skip in commission chain
+
 ---
 
 ## Phase 0: TDD — Core Business Logic Test Suites
@@ -633,9 +652,9 @@ validateRegistration(data, sponsorId)
 
 ---
 
-## Phase 10: Team & Tree Visualization
+## Phase 10: Team & Tree Visualization ✅
 
-### Task 19 — Team/Tree View
+### Task 19 — Team/Tree View ✅
 - Member tree view (`/dashboard/team`): interactive org chart, default 3 levels deep
 - Click node to expand/drill deeper
 - Each node shows: name, total downline, total sales amount
@@ -646,7 +665,7 @@ validateRegistration(data, sponsorId)
 - Admin tree view (`/admin/tree`): full tree from root
 - Search member in tree → centers view on that member
 
-### Task 20 — Playwright: Test Tree Visualization
+### Task 20 — Playwright: Test Tree Visualization ✅
 - Member sees own node at top of tree
 - Member sees correct children (up to 3)
 - Member sees 3 levels by default
@@ -671,7 +690,7 @@ validateRegistration(data, sponsorId)
 
 ---
 
-## Phase 11: Notifications + Announcements
+## Phase 11: Notifications + Announcements ✅ COMPLETE
 
 ### Task 21 — Notifications + Announcements
 - Notification bell icon in header (both admin and member)
@@ -1025,8 +1044,8 @@ Complete user journey tests that span all features:
 | 15 | 30 | Playwright | Test security + edge cases | — |
 | 16 | 31 | Build | i18n + responsive polish | — |
 | 16 | 32 | Playwright | Test i18n + responsive | — |
-| 17 | 33 | Build | Docker + deployment | — |
-| 17 | 34 | Playwright | Test Docker deployment | — |
+| 17 | 33 | Build | Docker + deployment | DONE |
+| 17 | 34 | Playwright | Test Docker deployment | DONE (33 tests) |
 | 18 | 35 | Playwright | Final full integration suite | — |
 
 ## Test Counts

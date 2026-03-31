@@ -138,15 +138,110 @@ const translations = {
   "wallet.title": { en: "Wallet", hi: "वॉलेट" },
   "wallet.transactions": { en: "Transaction History", hi: "लेनदेन इतिहास" },
   "wallet.noTransactions": { en: "No transactions yet", hi: "अभी तक कोई लेनदेन नहीं" },
+  "wallet.noFilteredTransactions": { en: "No transactions match your filters", hi: "आपके फ़िल्टर से कोई लेनदेन मेल नहीं खाता" },
   "wallet.type.COMMISSION": { en: "Commission", hi: "कमीशन" },
   "wallet.type.COMMISSION_REVERSAL": { en: "Commission Reversal", hi: "कमीशन वापसी" },
   "wallet.type.PAYOUT": { en: "Payout", hi: "भुगतान" },
   "wallet.type.ADJUSTMENT": { en: "Adjustment", hi: "समायोजन" },
+  "wallet.filterType": { en: "Type", hi: "प्रकार" },
+  "wallet.filterAll": { en: "All Types", hi: "सभी प्रकार" },
+  "wallet.filterDateFrom": { en: "From", hi: "से" },
+  "wallet.filterDateTo": { en: "To", hi: "तक" },
+  "wallet.clearFilters": { en: "Clear Filters", hi: "फ़िल्टर हटाएं" },
+  "wallet.colType": { en: "Type", hi: "प्रकार" },
+  "wallet.colDescription": { en: "Description", hi: "विवरण" },
+  "wallet.colAmount": { en: "Amount", hi: "राशि" },
+  "wallet.colDate": { en: "Date", hi: "तिथि" },
+  "wallet.showing": { en: "Showing", hi: "दिखा रहे हैं" },
+  "wallet.of": { en: "of", hi: "में से" },
+  "wallet.prev": { en: "Previous", hi: "पिछला" },
+  "wallet.next": { en: "Next", hi: "अगला" },
+
+  // Team / Tree
+  "team.title": { en: "My Team", hi: "मेरी टीम" },
+  "team.treeView": { en: "Tree View", hi: "ट्री व्यू" },
+  "team.listView": { en: "List View", hi: "सूची व्यू" },
+  "team.emptySlot": { en: "Empty Slot", hi: "खाली स्लॉट" },
+  "team.downline": { en: "downline", hi: "डाउनलाइन" },
+  "team.viewSubtree": { en: "View subtree", hi: "सबट्री देखें" },
+  "team.me": { en: "Me", hi: "मैं" },
+  "team.noMembers": { en: "No team members yet", hi: "अभी तक कोई टीम सदस्य नहीं" },
+  "team.noSearchResults": { en: "No members match your search", hi: "आपकी खोज से कोई सदस्य मेल नहीं खाता" },
+  "team.searchPlaceholder": { en: "Search by name, email, or phone...", hi: "नाम, ईमेल या फ़ोन से खोजें..." },
+  "team.colName": { en: "Name", hi: "नाम" },
+  "team.colLevel": { en: "Level", hi: "स्तर" },
+  "team.colSponsor": { en: "Sponsor", hi: "प्रायोजक" },
+  "team.colSales": { en: "Sales", hi: "बिक्री" },
+  "team.colStatus": { en: "Status", hi: "स्थिति" },
+
+  // Notifications
+  "nav.notifications": { en: "Notifications", hi: "सूचनाएं" },
+  "notifications.title": { en: "Notifications", hi: "सूचनाएं" },
+  "notifications.empty": { en: "No notifications", hi: "कोई सूचना नहीं" },
+  "notifications.markAllRead": { en: "Mark all as read", hi: "सभी पढ़ा हुआ चिह्नित करें" },
+  "notifications.markRead": { en: "Mark as read", hi: "पढ़ा हुआ चिह्नित करें" },
+  "notifications.filterAll": { en: "All", hi: "सभी" },
+  "notifications.filterUnread": { en: "Unread", hi: "अपठित" },
+  "notifications.viewAll": { en: "View all notifications", hi: "सभी सूचनाएं देखें" },
+  "notifications.saleApproved": { en: "Sale approved", hi: "बिक्री स्वीकृत" },
+  "notifications.saleRejected": { en: "Sale rejected", hi: "बिक्री अस्वीकृत" },
+  "notifications.commissionEarned": { en: "Commission earned", hi: "कमीशन प्राप्त" },
+  "notifications.payoutProcessed": { en: "Payout processed", hi: "भुगतान संसाधित" },
+  "notifications.newTeamMember": { en: "New team member", hi: "नया टीम सदस्य" },
+  "notifications.newAnnouncement": { en: "New announcement", hi: "नई घोषणा" },
+
+  // Announcements
+  "nav.announcements": { en: "Announcements", hi: "घोषणाएं" },
+  "announcements.title": { en: "Announcements", hi: "घोषणाएं" },
+  "announcements.empty": { en: "No announcements", hi: "कोई घोषणा नहीं" },
+  "announcements.pinned": { en: "Pinned", hi: "पिन किया हुआ" },
+  "announcements.create": { en: "Create Announcement", hi: "घोषणा बनाएं" },
+  "announcements.edit": { en: "Edit Announcement", hi: "घोषणा संपादित करें" },
+  "announcements.titleEn": { en: "Title (English)", hi: "शीर्षक (अंग्रेज़ी)" },
+  "announcements.titleHi": { en: "Title (Hindi)", hi: "शीर्षक (हिंदी)" },
+  "announcements.contentEn": { en: "Content (English)", hi: "सामग्री (अंग्रेज़ी)" },
+  "announcements.contentHi": { en: "Content (Hindi)", hi: "सामग्री (हिंदी)" },
+  "announcements.pin": { en: "Pin", hi: "पिन करें" },
+  "announcements.unpin": { en: "Unpin", hi: "अनपिन करें" },
+  "announcements.deactivate": { en: "Deactivate", hi: "निष्क्रिय करें" },
+  "announcements.activate": { en: "Activate", hi: "सक्रिय करें" },
+  "announcements.publish": { en: "Publish", hi: "प्रकाशित करें" },
+  "announcements.save": { en: "Save Changes", hi: "बदलाव सहेजें" },
+  "announcements.active": { en: "Active", hi: "सक्रिय" },
+  "announcements.inactive": { en: "Inactive", hi: "निष्क्रिय" },
+  "announcements.latestPinned": { en: "Pinned Announcements", hi: "पिन की गई घोषणाएं" },
+  "announcements.viewAll": { en: "View All Announcements", hi: "सभी घोषणाएं देखें" },
 
   // Common
   "common.logout": { en: "Logout", hi: "लॉगआउट" },
   "common.loading": { en: "Loading...", hi: "लोड हो रहा है..." },
   "common.noData": { en: "No data available", hi: "कोई डेटा उपलब्ध नहीं" },
+  "common.back": { en: "Back", hi: "वापस" },
+  "common.confirm": { en: "Confirm", hi: "पुष्टि करें" },
+  "common.cancel": { en: "Cancel", hi: "रद्द करें" },
+  "common.retry": { en: "Retry", hi: "पुनः प्रयास करें" },
+
+  // Dashboard commission table
+  "dashboard.commissions.billCode": { en: "Bill Code", hi: "बिल कोड" },
+  "dashboard.commissions.from": { en: "From", hi: "से" },
+  "dashboard.commissions.amount": { en: "Amount", hi: "राशि" },
+
+  // Sales extras
+  "sales.viewPdf": { en: "View PDF", hi: "PDF देखें" },
+  "sales.billPhotoAlt": { en: "Bill photo", hi: "बिल फ़ोटो" },
+
+  // Time ago
+  "time.justNow": { en: "Just now", hi: "अभी" },
+  "time.minutesShort": { en: "m", hi: "मि" },
+  "time.hoursShort": { en: "h", hi: "घं" },
+  "time.daysShort": { en: "d", hi: "दि" },
+
+  // Notifications extras
+  "notifications.unread": { en: "unread", hi: "अपठित" },
+
+  // Error handling
+  "error.network": { en: "Network error. Please check your connection.", hi: "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें।" },
+  "error.sessionExpired": { en: "Session expired. Please log in again.", hi: "सत्र समाप्त हो गया। कृपया फिर से लॉगिन करें।" },
 } as const;
 
 export type TranslationKey = keyof typeof translations;
@@ -155,6 +250,25 @@ export function t(key: TranslationKey, locale: Locale): string {
   const entry = translations[key];
   if (!entry) return key;
   return entry[locale] || entry.en;
+}
+
+const HINDI_MONTHS = [
+  "जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून",
+  "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर",
+];
+
+const ENGLISH_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function formatDate(dateStr: string, locale: Locale): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const day = d.getDate();
+  const month = locale === "hi" ? HINDI_MONTHS[d.getMonth()] : ENGLISH_MONTHS[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 export function formatINR(amount: number | string): string {

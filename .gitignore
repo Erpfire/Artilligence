@@ -1,6 +1,9 @@
 node_modules/
 .next/
 .env
+.env.bak
 uploads/
 test-results/
 tsconfig.tsbuildinfo
+.playwright-mcp/
+*.png

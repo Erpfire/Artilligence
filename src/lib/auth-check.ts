@@ -7,6 +7,11 @@ export async function requireAuth(requiredRole?: "ADMIN" | "MEMBER") {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
+  // Handle blocked sessions (token was invalidated by JWT callback)
+  if (!session.user.id || (session.user as any).blocked) {
+    redirect("/login?error=blocked");
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { status: true, role: true },

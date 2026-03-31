@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
+import NotificationBell from "@/components/NotificationBell";
+import { NetworkErrorHandler } from "@/components/ErrorBoundary";
 import type { Locale } from "@/lib/i18n";
 
 const navItems = [
@@ -74,6 +76,7 @@ export default function DashboardShell({
 
   return (
     <div className="flex h-screen bg-gray-50">
+      <NetworkErrorHandler />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -141,6 +144,8 @@ export default function DashboardShell({
               {locale === "en" ? "हिं" : "EN"}
             </button>
 
+            <NotificationBell locale={locale} notificationsPath="/dashboard/notifications" />
+
             <span className="text-sm text-gray-600" data-testid="member-name">
               {userName}
             </span>
@@ -170,7 +175,7 @@ export default function DashboardShell({
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1 text-xs font-medium transition-colors ${
+            className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2 py-1 text-xs font-medium transition-colors ${
               isActive(item.href) ? "text-primary" : "text-gray-500"
             }`}
             data-testid={`bottom-nav-${item.icon}`}

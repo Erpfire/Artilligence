@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
-import { formatINR } from "@/lib/i18n";
+import { formatINR, formatDate } from "@/lib/i18n";
+import { SalesListSkeleton } from "@/components/Skeleton";
 import SaleForm from "./SaleForm";
 
 type SaleStatus = "PENDING" | "APPROVED" | "REJECTED" | "RETURNED";
@@ -128,9 +129,7 @@ export default function SalesPage() {
 
           {/* Sales list */}
           {loading ? (
-            <p className="text-center text-gray-500 py-8" data-testid="sales-loading">
-              {t("common.loading")}
-            </p>
+            <SalesListSkeleton />
           ) : sales.length === 0 ? (
             <div className="rounded-lg border border-dashed border-gray-300 py-12 text-center" data-testid="sales-empty">
               <p className="text-gray-500">
@@ -153,7 +152,7 @@ export default function SalesPage() {
                       </p>
                       <p className="text-sm text-gray-500">{sale.customerName}</p>
                       <p className="text-sm text-gray-400">
-                        {new Date(sale.saleDate).toLocaleDateString("en-IN")}
+                        {formatDate(sale.saleDate, locale)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -229,7 +228,7 @@ function SaleDetail({
           </div>
           <div>
             <dt className="text-sm text-gray-500">{t("sales.saleDate")}</dt>
-            <dd className="font-medium">{new Date(sale.saleDate).toLocaleDateString("en-IN")}</dd>
+            <dd className="font-medium">{formatDate(sale.saleDate, locale as any)}</dd>
           </div>
           <div>
             <dt className="text-sm text-gray-500">{t("sales.customerName")}</dt>
@@ -304,12 +303,12 @@ function SaleDetail({
                 className="text-primary hover:underline"
                 data-testid="sale-detail-photo"
               >
-                View PDF
+                {t("sales.viewPdf")}
               </a>
             ) : (
               <img
                 src={`/api${sale.billPhotoPath}`}
-                alt="Bill photo"
+                alt={t("sales.billPhotoAlt")}
                 className="max-w-xs rounded-lg border shadow-sm"
                 data-testid="sale-detail-photo"
               />

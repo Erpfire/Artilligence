@@ -2,12 +2,22 @@ import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit password changes
+  const rateCheck = checkRateLimit(`change-password:${session.user.id}`, "change-password");
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: "Too many attempts. Please try again later." },
+      { status: 429 }
+    );
   }
 
   const body = await request.json();
@@ -23,6 +33,13 @@ export async function POST(request: NextRequest) {
   if (newPassword.length < 8) {
     return NextResponse.json(
       { error: "Password must be at least 8 characters" },
+      { status: 400 }
+    );
+  }
+
+  if (newPassword.length > 128) {
+    return NextResponse.json(
+      { error: "Password is too long" },
       { status: 400 }
     );
   }

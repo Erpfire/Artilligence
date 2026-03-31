@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 
 interface TreeNode {
@@ -12,6 +12,13 @@ interface TreeNode {
   referralCode: string;
   hasChildren?: boolean;
   children: (TreeNode | null)[];
+}
+
+interface SearchResult {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
 }
 
 function TreeNodeCard({
@@ -74,6 +81,85 @@ function TreeNodeCard({
   );
 }
 
+function TreeSearch({ onSelect }: { onSelect: (id: string, name: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  function handleChange(value: string) {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value.trim().length < 2) {
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/admin/search?q=${encodeURIComponent(value.trim())}`);
+        const data = await res.json();
+        setResults(data.members || []);
+        setShowDropdown(true);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+  }
+
+  function selectMember(member: SearchResult) {
+    setQuery(member.name);
+    setShowDropdown(false);
+    onSelect(member.id, member.name);
+  }
+
+  return (
+    <div className="relative" data-testid="tree-search">
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => handleChange(e.target.value)}
+        onFocus={() => results.length > 0 && setShowDropdown(true)}
+        onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+        placeholder="Search member by name, email, or phone..."
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary sm:max-w-sm"
+        data-testid="tree-search-input"
+      />
+      {searching && (
+        <span className="absolute right-3 top-2.5 text-xs text-gray-400">Searching...</span>
+      )}
+      {showDropdown && results.length > 0 && (
+        <div
+          className="absolute z-10 mt-1 w-full max-w-sm rounded-md border bg-white shadow-lg"
+          data-testid="tree-search-results"
+        >
+          {results.map((m) => (
+            <button
+              key={m.id}
+              onMouseDown={() => selectMember(m)}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-b last:border-0"
+              data-testid={`tree-search-result-${m.id}`}
+            >
+              <span className="font-medium">{m.name}</span>
+              <span className="text-gray-400 ml-2">{m.email}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {showDropdown && !searching && results.length === 0 && query.length >= 2 && (
+        <div
+          className="absolute z-10 mt-1 w-full max-w-sm rounded-md border bg-white p-3 text-sm text-gray-500 shadow-lg"
+          data-testid="tree-search-no-results"
+        >
+          No members found
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TreeLevel({
   nodes,
   onDrillDown,
@@ -111,6 +197,12 @@ export default function TreeView() {
   useEffect(() => {
     fetchTree();
   }, [fetchTree]);
+
+  function handleSearchSelect(memberId: string, memberName: string) {
+    setBreadcrumbs([{ id: memberId, name: memberName }]);
+    setRootId(memberId);
+    fetchTree(memberId);
+  }
 
   function drillDown(id: string) {
     // Find the node name for breadcrumbs
@@ -198,6 +290,11 @@ export default function TreeView() {
 
   return (
     <div>
+      {/* Search */}
+      <div className="mb-4">
+        <TreeSearch onSelect={handleSearchSelect} />
+      </div>
+
       {/* Breadcrumbs */}
       {breadcrumbs.length > 0 && (
         <div className="mb-4 flex items-center gap-1 text-sm" data-testid="tree-breadcrumbs">
