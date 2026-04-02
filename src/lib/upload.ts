@@ -62,3 +62,27 @@ export async function saveUploadedFile(
 
   return { success: true, filePath: `/uploads/bills/${saleId}/${fileName}` };
 }
+
+export async function saveKycFile(
+  buffer: Buffer,
+  userId: string,
+  docType: "aadhar" | "pan" | "passport-photo"
+): Promise<{ success: true; filePath: string } | { success: false; error: string }> {
+  if (!validateFileSize(buffer.length)) {
+    return { success: false, error: "File size exceeds 5MB limit" };
+  }
+
+  const { valid, detectedType } = validateFileType(buffer);
+  if (!valid || !detectedType) {
+    return { success: false, error: "Invalid file type. Only JPG, PNG, and PDF are accepted" };
+  }
+
+  const dir = path.join(process.cwd(), "uploads", "kyc", userId);
+  await mkdir(dir, { recursive: true });
+
+  const fileName = `${docType}${getExtension(detectedType)}`;
+  const filePath = path.join(dir, fileName);
+  await writeFile(filePath, buffer);
+
+  return { success: true, filePath: `/uploads/kyc/${userId}/${fileName}` };
+}

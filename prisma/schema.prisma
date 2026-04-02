@@ -69,6 +69,17 @@ model User {
   preferredLanguage      Language     @default(en)
   hasCompletedOnboarding Boolean      @default(false) @map("has_completed_onboarding")
   registrationIp         String?      @map("registration_ip")
+
+  // Optional KYC fields
+  aadharNumber           String?      @map("aadhar_number")
+  aadharFilePath         String?      @map("aadhar_file_path")
+  panNumber              String?      @map("pan_number")
+  panFilePath            String?      @map("pan_file_path")
+  passportPhotoPath      String?      @map("passport_photo_path")
+  bankAccountNumber      String?      @map("bank_account_number")
+  bankIfscCode           String?      @map("bank_ifsc_code")
+  bankName               String?      @map("bank_name")
+
   createdAt              DateTime     @default(now()) @map("created_at")
   updatedAt              DateTime     @updatedAt @map("updated_at")
 

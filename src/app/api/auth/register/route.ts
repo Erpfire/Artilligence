@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { sanitizeText, validateLength } from "@/lib/sanitize";
+import { sanitizeText } from "@/lib/sanitize";
+import { saveKycFile } from "@/lib/upload";
 
 function generateReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -25,10 +26,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
-    const { email, phone, password, confirmPassword, referralCode, preferredLanguage } = body;
-    // Sanitize name input
-    const name = body.name ? sanitizeText(body.name, 100) : "";
+    const formData = await req.formData();
+
+    const email = formData.get("email") as string | null;
+    const phone = formData.get("phone") as string | null;
+    const password = formData.get("password") as string | null;
+    const confirmPassword = formData.get("confirmPassword") as string | null;
+    const referralCode = formData.get("referralCode") as string | null;
+    const preferredLanguage = formData.get("preferredLanguage") as string | null;
+    const rawName = formData.get("name") as string | null;
+    const name = rawName ? sanitizeText(rawName, 100) : "";
+
+    // Optional KYC fields
+    const aadharNumber = (formData.get("aadharNumber") as string | null)?.trim() || null;
+    const panNumber = (formData.get("panNumber") as string | null)?.trim().toUpperCase() || null;
+    const bankAccountNumber = (formData.get("bankAccountNumber") as string | null)?.trim() || null;
+    const bankIfscCode = (formData.get("bankIfscCode") as string | null)?.trim().toUpperCase() || null;
+    const bankName = (formData.get("bankName") as string | null)?.trim() || null;
+
+    // Optional file uploads
+    const aadharFile = formData.get("aadharFile") as File | null;
+    const panFile = formData.get("panFile") as File | null;
+    const passportPhoto = formData.get("passportPhoto") as File | null;
 
     // Basic validation
     const errors: Array<{ field: string; message: string }> = [];
@@ -59,13 +78,30 @@ export async function POST(req: NextRequest) {
       errors.push({ field: "confirmPassword", message: "Passwords do not match" });
     }
 
+    // Optional KYC validation
+    if (aadharNumber && !/^\d{12}$/.test(aadharNumber)) {
+      errors.push({ field: "aadharNumber", message: "Aadhar number must be 12 digits" });
+    }
+
+    if (panNumber && !/^[A-Z]{5}\d{4}[A-Z]$/.test(panNumber)) {
+      errors.push({ field: "panNumber", message: "Invalid PAN format (e.g. ABCDE1234F)" });
+    }
+
+    if (bankAccountNumber && (bankAccountNumber.length < 9 || bankAccountNumber.length > 18)) {
+      errors.push({ field: "bankAccountNumber", message: "Bank account number must be 9-18 digits" });
+    }
+
+    if (bankIfscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankIfscCode)) {
+      errors.push({ field: "bankIfscCode", message: "Invalid IFSC code format" });
+    }
+
     if (errors.length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
     // Find sponsor
     const sponsor = await prisma.user.findUnique({
-      where: { referralCode },
+      where: { referralCode: referralCode! },
       select: { id: true, email: true, phone: true, status: true },
     });
 
@@ -91,7 +127,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const normalizedPhone = "+91" + phone.replace(/\D/g, "").slice(-10);
+    const normalizedPhone = "+91" + phone!.replace(/\D/g, "").slice(-10);
     if (sponsor.phone === normalizedPhone) {
       return NextResponse.json(
         { errors: [{ field: "phone", message: "Cannot use own referral code" }] },
@@ -100,7 +136,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Duplicate checks
-    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    const existingEmail = await prisma.user.findUnique({ where: { email: email! } });
     if (existingEmail) {
       return NextResponse.json(
         { errors: [{ field: "email", message: "Email already registered" }] },
@@ -117,7 +153,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Hash password (outside transaction for performance)
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await bcrypt.hash(password!, 12);
 
     // Generate unique referral code
     let newReferralCode = generateReferralCode();
@@ -136,7 +172,7 @@ export async function POST(req: NextRequest) {
 
           const newUser = await tx.user.create({
             data: {
-              email,
+              email: email!,
               passwordHash,
               name,
               phone: normalizedPhone,
@@ -149,6 +185,11 @@ export async function POST(req: NextRequest) {
               referralCode: newReferralCode,
               preferredLanguage: preferredLanguage === "hi" ? "hi" : "en",
               registrationIp: ip,
+              aadharNumber,
+              panNumber,
+              bankAccountNumber,
+              bankIfscCode,
+              bankName: bankName ? sanitizeText(bankName, 100) : null,
             },
           });
 
@@ -174,6 +215,34 @@ export async function POST(req: NextRequest) {
         // Wait a bit before retrying (back off)
         await new Promise((r) => setTimeout(r, 100 * (attempt + 1)));
       }
+    }
+
+    // Save KYC files after user is created (need the userId for file paths)
+    const fileUpdates: Record<string, string> = {};
+
+    if (aadharFile && aadharFile.size > 0) {
+      const buffer = Buffer.from(await aadharFile.arrayBuffer());
+      const result = await saveKycFile(buffer, user!.id, "aadhar");
+      if (result.success) fileUpdates.aadharFilePath = result.filePath;
+    }
+
+    if (panFile && panFile.size > 0) {
+      const buffer = Buffer.from(await panFile.arrayBuffer());
+      const result = await saveKycFile(buffer, user!.id, "pan");
+      if (result.success) fileUpdates.panFilePath = result.filePath;
+    }
+
+    if (passportPhoto && passportPhoto.size > 0) {
+      const buffer = Buffer.from(await passportPhoto.arrayBuffer());
+      const result = await saveKycFile(buffer, user!.id, "passport-photo");
+      if (result.success) fileUpdates.passportPhotoPath = result.filePath;
+    }
+
+    if (Object.keys(fileUpdates).length > 0) {
+      await prisma.user.update({
+        where: { id: user!.id },
+        data: fileUpdates,
+      });
     }
 
     // Notify sponsor about new team member
