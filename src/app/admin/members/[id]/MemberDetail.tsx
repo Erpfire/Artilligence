@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 
 interface MemberData {
@@ -18,6 +18,14 @@ interface MemberData {
   updatedAt: string;
   hasCompletedOnboarding: boolean;
   preferredLanguage: string;
+  aadharNumber: string | null;
+  aadharFilePath: string | null;
+  panNumber: string | null;
+  panFilePath: string | null;
+  passportPhotoPath: string | null;
+  bankAccountNumber: string | null;
+  bankIfscCode: string | null;
+  bankName: string | null;
   sponsor: { id: string; name: string; email: string; referralCode: string } | null;
   parent: { id: string; name: string; email: string } | null;
   children: { id: string; name: string; email: string; position: number; status: string }[];
@@ -63,6 +71,34 @@ export default function MemberDetail({ member }: { member: MemberData }) {
   const [blocking, setBlocking] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editErrors, setEditErrors] = useState<Array<{ field: string; message: string }>>([]);
+
+  const [editForm, setEditForm] = useState({
+    name: member.name,
+    email: member.email,
+    phone: member.phone.replace("+91", ""),
+    preferredLanguage: member.preferredLanguage,
+    aadharNumber: member.aadharNumber || "",
+    panNumber: member.panNumber || "",
+    bankAccountNumber: member.bankAccountNumber || "",
+    bankIfscCode: member.bankIfscCode || "",
+    bankName: member.bankName || "",
+  });
+
+  const aadharFileRef = useRef<HTMLInputElement>(null);
+  const panFileRef = useRef<HTMLInputElement>(null);
+  const passportPhotoRef = useRef<HTMLInputElement>(null);
+
+  function getEditError(field: string) {
+    return editErrors.find((e) => e.field === field)?.message;
+  }
+
+  function handleEditChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+    setEditForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setEditErrors((prev) => prev.filter((err) => err.field !== e.target.name));
+  }
 
   async function toggleBlock() {
     setBlocking(true);
@@ -96,6 +132,59 @@ export default function MemberDetail({ member }: { member: MemberData }) {
     }
   }
 
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setEditErrors([]);
+    setSaving(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("name", editForm.name);
+      formData.append("email", editForm.email);
+      formData.append("phone", editForm.phone);
+      formData.append("preferredLanguage", editForm.preferredLanguage);
+      if (editForm.aadharNumber) formData.append("aadharNumber", editForm.aadharNumber);
+      if (editForm.panNumber) formData.append("panNumber", editForm.panNumber);
+      if (editForm.bankAccountNumber) formData.append("bankAccountNumber", editForm.bankAccountNumber);
+      if (editForm.bankIfscCode) formData.append("bankIfscCode", editForm.bankIfscCode);
+      if (editForm.bankName) formData.append("bankName", editForm.bankName);
+
+      const aadharFile = aadharFileRef.current?.files?.[0];
+      if (aadharFile) formData.append("aadharFile", aadharFile);
+
+      const panFile = panFileRef.current?.files?.[0];
+      if (panFile) formData.append("panFile", panFile);
+
+      const passportPhoto = passportPhotoRef.current?.files?.[0];
+      if (passportPhoto) formData.append("passportPhoto", passportPhoto);
+
+      const res = await fetch(`/api/admin/members/${member.id}`, {
+        method: "PUT",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setEditErrors(data.errors || [{ field: "general", message: "Update failed" }]);
+        return;
+      }
+
+      setEditing(false);
+      router.refresh();
+    } catch {
+      setEditErrors([{ field: "general", message: "Something went wrong" }]);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputClass =
+    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none";
+
+  const hasKycData = member.aadharNumber || member.panNumber || member.passportPhotoPath ||
+    member.bankAccountNumber || member.aadharFilePath || member.panFilePath;
+
   return (
     <div>
       {/* Header */}
@@ -113,6 +202,16 @@ export default function MemberDetail({ member }: { member: MemberData }) {
           </h1>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setEditing(!editing);
+              setEditErrors([]);
+            }}
+            className="rounded-md bg-blue-100 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-200 transition-colors"
+            data-testid="edit-member-button"
+          >
+            {editing ? "Cancel Edit" : "Edit Member"}
+          </button>
           <button
             onClick={resetPassword}
             disabled={resettingPassword}
@@ -156,7 +255,140 @@ export default function MemberDetail({ member }: { member: MemberData }) {
         </div>
       )}
 
-      {/* Profile + Status cards */}
+      {/* Edit Form */}
+      {editing && (
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-6" data-testid="edit-form">
+          <h2 className="text-lg font-semibold mb-4">Edit Member Information</h2>
+
+          {getEditError("general") && (
+            <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+              {getEditError("general")}
+            </div>
+          )}
+
+          <form onSubmit={handleEditSubmit} className="space-y-6">
+            {/* Basic Info */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">Basic Information</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="edit-name" className="mb-1 block text-sm text-gray-600">Name</label>
+                  <input id="edit-name" name="name" value={editForm.name} onChange={handleEditChange}
+                    required className={inputClass} data-testid="edit-name" />
+                  {getEditError("name") && <p className="mt-1 text-xs text-red-600">{getEditError("name")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-email" className="mb-1 block text-sm text-gray-600">Email</label>
+                  <input id="edit-email" name="email" type="email" value={editForm.email} onChange={handleEditChange}
+                    required className={inputClass} data-testid="edit-email" />
+                  {getEditError("email") && <p className="mt-1 text-xs text-red-600">{getEditError("email")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-phone" className="mb-1 block text-sm text-gray-600">Phone</label>
+                  <div className="flex">
+                    <span className="inline-flex items-center rounded-l-md border border-r-0 border-gray-300 bg-gray-100 px-3 text-sm text-gray-500">+91</span>
+                    <input id="edit-phone" name="phone" value={editForm.phone} onChange={handleEditChange}
+                      required maxLength={10} className="w-full rounded-r-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                      data-testid="edit-phone" />
+                  </div>
+                  {getEditError("phone") && <p className="mt-1 text-xs text-red-600">{getEditError("phone")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-language" className="mb-1 block text-sm text-gray-600">Language</label>
+                  <select id="edit-language" name="preferredLanguage" value={editForm.preferredLanguage}
+                    onChange={handleEditChange} className={inputClass} data-testid="edit-language">
+                    <option value="en">English</option>
+                    <option value="hi">Hindi</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* KYC Info */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">KYC Documents</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="edit-aadhar" className="mb-1 block text-sm text-gray-600">Aadhar Number</label>
+                  <input id="edit-aadhar" name="aadharNumber" value={editForm.aadharNumber} onChange={handleEditChange}
+                    maxLength={12} placeholder="12 digit Aadhar number" className={inputClass} data-testid="edit-aadhar" />
+                  {getEditError("aadharNumber") && <p className="mt-1 text-xs text-red-600">{getEditError("aadharNumber")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-aadhar-file" className="mb-1 block text-sm text-gray-600">
+                    Aadhar Document {member.aadharFilePath && <span className="text-green-600">(uploaded)</span>}
+                  </label>
+                  <input id="edit-aadhar-file" ref={aadharFileRef} type="file" accept="image/jpeg,image/png,application/pdf"
+                    className="w-full text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+                    data-testid="edit-aadhar-file" />
+                </div>
+                <div>
+                  <label htmlFor="edit-pan" className="mb-1 block text-sm text-gray-600">PAN Number</label>
+                  <input id="edit-pan" name="panNumber" value={editForm.panNumber} onChange={handleEditChange}
+                    maxLength={10} placeholder="e.g. ABCDE1234F" className={inputClass} data-testid="edit-pan" />
+                  {getEditError("panNumber") && <p className="mt-1 text-xs text-red-600">{getEditError("panNumber")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-pan-file" className="mb-1 block text-sm text-gray-600">
+                    PAN Document {member.panFilePath && <span className="text-green-600">(uploaded)</span>}
+                  </label>
+                  <input id="edit-pan-file" ref={panFileRef} type="file" accept="image/jpeg,image/png,application/pdf"
+                    className="w-full text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+                    data-testid="edit-pan-file" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="edit-passport-photo" className="mb-1 block text-sm text-gray-600">
+                    Passport Photo {member.passportPhotoPath && <span className="text-green-600">(uploaded)</span>}
+                  </label>
+                  <input id="edit-passport-photo" ref={passportPhotoRef} type="file" accept="image/jpeg,image/png"
+                    className="w-full text-sm text-gray-500 file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+                    data-testid="edit-passport-photo" />
+                </div>
+              </div>
+            </div>
+
+            {/* Bank Details */}
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-3">Bank Details</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="edit-bank-account" className="mb-1 block text-sm text-gray-600">Account Number</label>
+                  <input id="edit-bank-account" name="bankAccountNumber" value={editForm.bankAccountNumber}
+                    onChange={handleEditChange} maxLength={18} placeholder="Bank account number" className={inputClass}
+                    data-testid="edit-bank-account" />
+                  {getEditError("bankAccountNumber") && <p className="mt-1 text-xs text-red-600">{getEditError("bankAccountNumber")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-ifsc" className="mb-1 block text-sm text-gray-600">IFSC Code</label>
+                  <input id="edit-ifsc" name="bankIfscCode" value={editForm.bankIfscCode} onChange={handleEditChange}
+                    maxLength={11} placeholder="e.g. SBIN0001234" className={inputClass} data-testid="edit-ifsc" />
+                  {getEditError("bankIfscCode") && <p className="mt-1 text-xs text-red-600">{getEditError("bankIfscCode")}</p>}
+                </div>
+                <div>
+                  <label htmlFor="edit-bank-name" className="mb-1 block text-sm text-gray-600">Bank Name</label>
+                  <input id="edit-bank-name" name="bankName" value={editForm.bankName} onChange={handleEditChange}
+                    placeholder="e.g. State Bank of India" className={inputClass} data-testid="edit-bank-name" />
+                  {getEditError("bankName") && <p className="mt-1 text-xs text-red-600">{getEditError("bankName")}</p>}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="submit" disabled={saving}
+                className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+                data-testid="save-edit-button">
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+              <button type="button" onClick={() => setEditing(false)}
+                className="rounded-md border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Profile + Status + KYC cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Profile */}
         <div className="rounded-lg border bg-white p-6 shadow-sm" data-testid="profile-card">
@@ -296,6 +528,102 @@ export default function MemberDetail({ member }: { member: MemberData }) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* KYC & Bank Details Card */}
+      <div className="mt-6 rounded-lg border bg-white p-6 shadow-sm" data-testid="kyc-card">
+        <h2 className="text-lg font-semibold mb-4">KYC & Bank Details</h2>
+        {!hasKycData ? (
+          <p className="text-sm text-gray-500">No KYC or bank details provided yet.</p>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Aadhar */}
+            <dl className="space-y-2 text-sm">
+              <dt className="font-medium text-gray-700">Aadhar</dt>
+              <dd data-testid="kyc-aadhar">
+                {member.aadharNumber ? (
+                  <span className="font-mono">{member.aadharNumber}</span>
+                ) : (
+                  <span className="text-gray-400">Not provided</span>
+                )}
+              </dd>
+              <dd>
+                {member.aadharFilePath ? (
+                  <a href={member.aadharFilePath} target="_blank" rel="noopener noreferrer"
+                    className="text-primary hover:underline text-xs" data-testid="kyc-aadhar-file">
+                    View Document
+                  </a>
+                ) : (
+                  <span className="text-gray-400 text-xs">No document</span>
+                )}
+              </dd>
+            </dl>
+
+            {/* PAN */}
+            <dl className="space-y-2 text-sm">
+              <dt className="font-medium text-gray-700">PAN</dt>
+              <dd data-testid="kyc-pan">
+                {member.panNumber ? (
+                  <span className="font-mono">{member.panNumber}</span>
+                ) : (
+                  <span className="text-gray-400">Not provided</span>
+                )}
+              </dd>
+              <dd>
+                {member.panFilePath ? (
+                  <a href={member.panFilePath} target="_blank" rel="noopener noreferrer"
+                    className="text-primary hover:underline text-xs" data-testid="kyc-pan-file">
+                    View Document
+                  </a>
+                ) : (
+                  <span className="text-gray-400 text-xs">No document</span>
+                )}
+              </dd>
+            </dl>
+
+            {/* Passport Photo */}
+            <dl className="space-y-2 text-sm">
+              <dt className="font-medium text-gray-700">Passport Photo</dt>
+              <dd>
+                {member.passportPhotoPath ? (
+                  <a href={member.passportPhotoPath} target="_blank" rel="noopener noreferrer"
+                    className="text-primary hover:underline text-xs" data-testid="kyc-passport-photo">
+                    View Photo
+                  </a>
+                ) : (
+                  <span className="text-gray-400">Not uploaded</span>
+                )}
+              </dd>
+            </dl>
+
+            {/* Bank Details */}
+            {(member.bankAccountNumber || member.bankIfscCode || member.bankName) && (
+              <dl className="space-y-2 text-sm sm:col-span-2 lg:col-span-3 border-t pt-4">
+                <dt className="font-medium text-gray-700 mb-2">Bank Details</dt>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <span className="text-gray-500 text-xs">Account Number</span>
+                    <dd className="font-mono" data-testid="kyc-bank-account">
+                      {member.bankAccountNumber || <span className="text-gray-400 font-sans">-</span>}
+                    </dd>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">IFSC Code</span>
+                    <dd className="font-mono" data-testid="kyc-ifsc">
+                      {member.bankIfscCode || <span className="text-gray-400 font-sans">-</span>}
+                    </dd>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Bank Name</span>
+                    <dd data-testid="kyc-bank-name">
+                      {member.bankName || <span className="text-gray-400">-</span>}
+                    </dd>
+                  </div>
+                </div>
+              </dl>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Recent Sales */}
