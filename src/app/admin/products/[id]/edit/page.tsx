@@ -31,6 +31,10 @@ export default async function EditProductPage({
           price: product.price.toString(),
           sku: product.sku || "",
           category: product.category || "",
+          imageUrl: product.imageUrl || "",
+          warranty: product.warranty || "",
+          ah: product.ah || "",
+          remark: product.remark || "",
           isActive: product.isActive,
         }}
       />

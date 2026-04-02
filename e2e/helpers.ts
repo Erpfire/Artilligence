@@ -3,7 +3,7 @@ import { execSync } from "child_process";
 
 const PROJECT_DIR =
   "/home/deathstar/2026/Projects/JanFebMarApr/Artilligence";
-const DB_CMD = `docker compose exec -T db psql -U artilligence -d artilligence -t -A`;
+const DB_CMD = `docker compose exec -T db psql "postgresql://postgres:Krishnaisgod%40123%23@72.61.233.6:5432/artilligence_db" -t -A`;
 
 export function dbQuery(sql: string): string {
   const escaped = sql.replace(/"/g, '\\"');

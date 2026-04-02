@@ -1,7 +1,18 @@
 import { prisma } from "@/lib/db";
 import ProductsTable from "./ProductsTable";
 
-const CATEGORIES = ["Car", "Inverter", "Bike", "Tubular", "SMF"];
+const CATEGORIES = [
+  "TWO-WHEELER",
+  "CAR/SUV",
+  "CAR/SUV/TRACTOR",
+  "TRACTOR, LCV & HCV",
+  "HCV",
+  "LCV",
+  "3-WHEELER",
+  "3-WHEELER & LCV",
+  "INVERTER",
+  "INVERTER BATTERY",
+];
 
 export default async function ProductsPage({
   searchParams,

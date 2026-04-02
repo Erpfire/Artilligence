@@ -45,7 +45,7 @@ export async function PUT(
   }
 
   const body = await request.json();
-  const { name, nameHi, description, descriptionHi, price, sku, category, isActive } = body;
+  const { name, nameHi, description, descriptionHi, price, sku, category, imageUrl, warranty, ah, remark, isActive } = body;
 
   // Validation
   const errors: string[] = [];
@@ -78,6 +78,10 @@ export async function PUT(
       price: Number(price),
       sku: sku?.trim() || null,
       category: category.trim(),
+      imageUrl: imageUrl?.trim() || null,
+      warranty: warranty?.trim() || null,
+      ah: ah?.trim() || null,
+      remark: remark?.trim() || null,
       isActive: isActive !== undefined ? isActive : existing.isActive,
     },
   });

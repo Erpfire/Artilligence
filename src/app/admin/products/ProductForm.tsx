@@ -3,7 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const CATEGORIES = ["Car", "Inverter", "Bike", "Tubular", "SMF"];
+const CATEGORIES = [
+  "TWO-WHEELER",
+  "CAR/SUV",
+  "CAR/SUV/TRACTOR",
+  "TRACTOR, LCV & HCV",
+  "HCV",
+  "LCV",
+  "3-WHEELER",
+  "3-WHEELER & LCV",
+  "INVERTER",
+  "INVERTER BATTERY",
+];
 
 interface ProductData {
   id?: string;
@@ -14,6 +25,10 @@ interface ProductData {
   price: string;
   sku: string;
   category: string;
+  imageUrl: string;
+  warranty: string;
+  ah: string;
+  remark: string;
   isActive: boolean;
 }
 
@@ -34,6 +49,10 @@ export default function ProductForm({
       price: "",
       sku: "",
       category: "",
+      imageUrl: "",
+      warranty: "",
+      ah: "",
+      remark: "",
       isActive: true,
     }
   );
@@ -76,6 +95,10 @@ export default function ProductForm({
           price: Number(form.price),
           sku: form.sku || null,
           category: form.category,
+          imageUrl: form.imageUrl || null,
+          warranty: form.warranty || null,
+          ah: form.ah || null,
+          remark: form.remark || null,
           isActive: form.isActive,
         }),
       });
@@ -256,6 +279,80 @@ export default function ProductForm({
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
             data-testid="input-sku"
           />
+        </div>
+
+        {/* Image URL */}
+        <div>
+          <label htmlFor="imageUrl" className="mb-1 block text-sm font-medium text-gray-700">
+            Image URL
+          </label>
+          <input
+            id="imageUrl"
+            name="imageUrl"
+            type="text"
+            value={form.imageUrl}
+            onChange={(e) => updateField("imageUrl", e.target.value)}
+            placeholder="/products/example.png"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+            data-testid="input-imageUrl"
+          />
+          {form.imageUrl && (
+            <div className="mt-2">
+              <img src={form.imageUrl} alt="Preview" className="h-20 object-contain rounded border bg-gray-50 p-1" />
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-3">
+          {/* Warranty */}
+          <div>
+            <label htmlFor="warranty" className="mb-1 block text-sm font-medium text-gray-700">
+              Warranty
+            </label>
+            <input
+              id="warranty"
+              name="warranty"
+              type="text"
+              value={form.warranty}
+              onChange={(e) => updateField("warranty", e.target.value)}
+              placeholder="e.g. 24F+24P"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              data-testid="input-warranty"
+            />
+          </div>
+
+          {/* AH */}
+          <div>
+            <label htmlFor="ah" className="mb-1 block text-sm font-medium text-gray-700">
+              AH / VA
+            </label>
+            <input
+              id="ah"
+              name="ah"
+              type="text"
+              value={form.ah}
+              onChange={(e) => updateField("ah", e.target.value)}
+              placeholder="e.g. 65"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              data-testid="input-ah"
+            />
+          </div>
+
+          {/* Remark */}
+          <div>
+            <label htmlFor="remark" className="mb-1 block text-sm font-medium text-gray-700">
+              Remark
+            </label>
+            <input
+              id="remark"
+              name="remark"
+              type="text"
+              value={form.remark}
+              onChange={(e) => updateField("remark", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              data-testid="input-remark"
+            />
+          </div>
         </div>
 
         {/* Active toggle */}

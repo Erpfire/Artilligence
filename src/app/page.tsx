@@ -240,12 +240,12 @@ function Navbar() {
         </Link>
 
         <div className="flex items-center gap-6">
-          <a
-            href="#products"
+          <Link
+            href="/products"
             className="hidden md:inline-block text-sm text-gray-400 hover:text-white transition-colors font-body"
           >
             Products
-          </a>
+          </Link>
           <a
             href="#platform"
             className="hidden md:inline-block text-sm text-gray-400 hover:text-white transition-colors font-body"
@@ -479,6 +479,29 @@ function ProductsSection() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* View All Products CTA */}
+        <div className="reveal mt-12 text-center" style={{ transitionDelay: "0.3s" }}>
+          <Link
+            href="/products"
+            className="inline-flex items-center gap-2 rounded-full bg-exide px-8 py-3.5 text-sm font-semibold text-white hover:bg-exide-dark transition-all hover:shadow-lg hover:shadow-exide/25 font-body"
+          >
+            View All Products
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17 8l4 4m0 0l-4 4m4-4H3"
+              />
+            </svg>
+          </Link>
         </div>
       </div>
     </section>

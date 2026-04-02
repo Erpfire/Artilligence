@@ -33,7 +33,7 @@ test.describe("Product Management", () => {
   // ── Products List ──────────────────────────────────────────
 
   test.describe("Products List", () => {
-    test("admin sees seeded products in the table", async ({ page }) => {
+    test("admin sees products in the table", async ({ page }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.waitForURL("**/admin");
 
@@ -43,10 +43,11 @@ test.describe("Product Management", () => {
       await expect(page.locator('[data-testid="products-title"]')).toHaveText("Products");
       await expect(page.locator('[data-testid="products-table"]')).toBeVisible();
 
-      // Should see seeded products
-      await expect(page.locator("text=Exide Inva Master IMTT 1500")).toBeVisible();
-      await expect(page.locator("text=EX-IMTT-1500")).toBeVisible();
-      await expect(page.locator("tbody td:text('Tubular')").first()).toBeVisible();
+      // Should see products in the table (newest first — imported products)
+      const rows = page.locator("tbody tr");
+      const count = await rows.count();
+      expect(count).toBeGreaterThan(0);
+      expect(count).toBeLessThanOrEqual(10); // max per page
     });
 
     test("products table shows correct columns", async ({ page }) => {
@@ -57,12 +58,11 @@ test.describe("Product Management", () => {
 
       // Check column headers
       const headers = page.locator("thead th");
-      await expect(headers.nth(0)).toContainText("Name");
-      await expect(headers.nth(1)).toContainText("SKU");
-      await expect(headers.nth(2)).toContainText("Category");
-      await expect(headers.nth(3)).toContainText("Price");
-      await expect(headers.nth(4)).toContainText("Status");
-      await expect(headers.nth(5)).toContainText("Actions");
+      await expect(headers.nth(0)).toContainText("Product");
+      await expect(headers.nth(1)).toContainText("Category");
+      await expect(headers.nth(2)).toContainText("Price");
+      await expect(headers.nth(3)).toContainText("Status");
+      await expect(headers.nth(4)).toContainText("Actions");
     });
   });
 
@@ -83,7 +83,7 @@ test.describe("Product Management", () => {
       await page.fill('[data-testid="input-nameHi"]', "टेस्ट प्रोडक्ट अल्फा");
       await page.fill('[data-testid="input-description"]', "A test product description");
       await page.fill('[data-testid="input-descriptionHi"]', "टेस्ट प्रोडक्ट विवरण");
-      await page.selectOption('[data-testid="input-category"]', "Car");
+      await page.selectOption('[data-testid="input-category"]', "CAR/SUV");
       await page.fill('[data-testid="input-price"]', "9999");
       await page.fill('[data-testid="input-sku"]', "TEST-ALPHA-001");
 
@@ -130,7 +130,7 @@ test.describe("Product Management", () => {
 
       // Use an existing seeded product's SKU
       await page.fill('[data-testid="input-name"]', "Duplicate SKU Product");
-      await page.selectOption('[data-testid="input-category"]', "Car");
+      await page.selectOption('[data-testid="input-category"]', "CAR/SUV");
       await page.fill('[data-testid="input-price"]', "5000");
       await page.fill('[data-testid="input-sku"]', "EX-IMTT-1500"); // seeded SKU
 
@@ -155,7 +155,7 @@ test.describe("Product Management", () => {
       await page.fill('[data-testid="input-nameHi"]', hindiName);
       await page.fill('[data-testid="input-description"]', "English description");
       await page.fill('[data-testid="input-descriptionHi"]', hindiDesc);
-      await page.selectOption('[data-testid="input-category"]', "Tubular");
+      await page.selectOption('[data-testid="input-category"]', "INVERTER BATTERY");
       await page.fill('[data-testid="input-price"]', "7777");
       await page.fill('[data-testid="input-sku"]', "TEST-HINDI-001");
 
@@ -181,7 +181,7 @@ test.describe("Product Management", () => {
       await page.goto("/admin/products/new");
 
       await page.fill('[data-testid="input-name"]', "Test Product Edit Me");
-      await page.selectOption('[data-testid="input-category"]', "Bike");
+      await page.selectOption('[data-testid="input-category"]', "TWO-WHEELER");
       await page.fill('[data-testid="input-price"]', "3000");
       await page.fill('[data-testid="input-sku"]', "TEST-EDIT-001");
 
@@ -235,7 +235,7 @@ test.describe("Product Management", () => {
 
       await page.fill('[data-testid="input-name"]', "Test Product Hindi Edit");
       await page.fill('[data-testid="input-nameHi"]', "पुराना नाम");
-      await page.selectOption('[data-testid="input-category"]', "SMF");
+      await page.selectOption('[data-testid="input-category"]', "HCV");
       await page.fill('[data-testid="input-price"]', "8000");
       await page.fill('[data-testid="input-sku"]', "TEST-HI-EDIT-001");
 
@@ -275,7 +275,7 @@ test.describe("Product Management", () => {
       await page.goto("/admin/products/new");
 
       await page.fill('[data-testid="input-name"]', "Test Product Deactivate");
-      await page.selectOption('[data-testid="input-category"]', "Car");
+      await page.selectOption('[data-testid="input-category"]', "CAR/SUV");
       await page.fill('[data-testid="input-price"]', "4000");
       await page.fill('[data-testid="input-sku"]', "TEST-DEACT-001");
 
@@ -311,7 +311,7 @@ test.describe("Product Management", () => {
     }) => {
       // Create and deactivate a product via DB
       dbQuery(
-        "INSERT INTO products (id, name, sku, category, price, is_active, created_at, updated_at) VALUES (gen_random_uuid(), 'Test Product Reactivate', 'TEST-REACT-001', 'Bike', 2000, false, NOW(), NOW())"
+        "INSERT INTO products (id, name, sku, category, price, is_active, created_at, updated_at) VALUES (gen_random_uuid(), 'Test Product Reactivate', 'TEST-REACT-001', 'TWO-WHEELER', 2000, false, NOW(), NOW())"
       );
 
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
@@ -346,20 +346,12 @@ test.describe("Product Management", () => {
   // ── Pagination ─────────────────────────────────────────────
 
   test.describe("Pagination", () => {
-    test("pagination works with 25+ products", async ({ page }) => {
-      // Insert 25 test products directly in DB
-      for (let i = 1; i <= 25; i++) {
-        const padded = String(i).padStart(3, "0");
-        dbQuery(
-          `INSERT INTO products (id, name, sku, category, price, is_active, created_at, updated_at) VALUES (gen_random_uuid(), 'Pagination Product ${padded}', 'TEST-PAGE-${padded}', 'Car', ${1000 + i}, true, NOW() + interval '${i} second', NOW())`
-        );
-      }
-
+    test("pagination works with many products", async ({ page }) => {
       await login(page, ADMIN_EMAIL, ADMIN_PASSWORD);
       await page.waitForURL("**/admin");
       await page.goto("/admin/products");
 
-      // Should see pagination controls (25 new + 7 seeded = 32 products, 10 per page = 4 pages)
+      // Should see pagination controls (61+ products, 10 per page)
       await expect(page.locator('[data-testid="pagination"]')).toBeVisible();
       await expect(page.locator('[data-testid="next-page"]')).toBeVisible();
 
@@ -372,13 +364,6 @@ test.describe("Product Management", () => {
       await page.waitForURL(/page=2/);
       const secondPageRows = page.locator("tbody tr");
       await expect(secondPageRows).toHaveCount(10);
-
-      // Go to last page
-      await page.click('[data-testid="page-4"]');
-      await page.waitForURL(/page=4/);
-      const lastPageRows = page.locator("tbody tr");
-      // 32 total - 30 (3 pages) = 2 on last page
-      await expect(lastPageRows).toHaveCount(2);
     });
   });
 
@@ -405,14 +390,13 @@ test.describe("Product Management", () => {
       await page.waitForURL("**/admin");
       await page.goto("/admin/products");
 
-      await page.selectOption('[data-testid="category-filter"]', "Bike");
+      await page.selectOption('[data-testid="category-filter"]', "TWO-WHEELER");
 
-      // Should show only Bike products
-      await expect(page.locator("text=Exide Bike Battery XLTZ 5")).toBeVisible();
+      // Should show TWO-WHEELER products
+      await expect(page.getByText("XLTZ5A", { exact: true }).first()).toBeVisible();
 
-      // Non-Bike products should not be visible
-      await expect(page.locator("text=Exide Mileage ML 75D23L")).not.toBeVisible();
-      await expect(page.locator("text=Exide PowerSafe EP 200-12")).not.toBeVisible();
+      // Non-TWO-WHEELER products should not be visible
+      await expect(page.getByText("DRIVE100L", { exact: true })).not.toBeVisible();
     });
 
     test("search with no results → shows empty state", async ({ page }) => {
@@ -439,7 +423,7 @@ test.describe("Product Management", () => {
       await page.goto("/admin/products/new");
 
       await page.fill('[data-testid="input-name"]', "Test Product Audit Create");
-      await page.selectOption('[data-testid="input-category"]', "Inverter");
+      await page.selectOption('[data-testid="input-category"]', "INVERTER");
       await page.fill('[data-testid="input-price"]', "12000");
       await page.fill('[data-testid="input-sku"]', "TEST-AUDIT-CREATE");
 
@@ -460,7 +444,7 @@ test.describe("Product Management", () => {
       await page.goto("/admin/products/new");
 
       await page.fill('[data-testid="input-name"]', "Test Product Audit Update");
-      await page.selectOption('[data-testid="input-category"]', "Car");
+      await page.selectOption('[data-testid="input-category"]', "CAR/SUV");
       await page.fill('[data-testid="input-price"]', "5000");
       await page.fill('[data-testid="input-sku"]', "TEST-AUDIT-UPDATE");
 
@@ -492,7 +476,7 @@ test.describe("Product Management", () => {
       await page.goto("/admin/products/new");
 
       await page.fill('[data-testid="input-name"]', "Test Product Audit Deact");
-      await page.selectOption('[data-testid="input-category"]', "SMF");
+      await page.selectOption('[data-testid="input-category"]', "LCV");
       await page.fill('[data-testid="input-price"]', "15000");
       await page.fill('[data-testid="input-sku"]', "TEST-AUDIT-DEACT");
 

@@ -10,6 +10,9 @@ interface Product {
   sku: string | null;
   category: string | null;
   price: string;
+  imageUrl: string | null;
+  warranty: string | null;
+  ah: string | null;
   isActive: boolean;
 }
 
@@ -115,10 +118,7 @@ export default function ProductsTable({
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                SKU
+                Product
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                 Category
@@ -144,11 +144,26 @@ export default function ProductsTable({
             ) : (
               products.map((product) => (
                 <tr key={product.id} data-testid={`product-row-${product.id}`}>
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                    {product.name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {product.sku || "-"}
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="w-10 h-10 object-contain rounded border bg-gray-50 p-0.5 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded border bg-gray-50 flex items-center justify-center shrink-0">
+                          <span className="text-gray-300 text-xs">N/A</span>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        {product.sku && (
+                          <div className="text-xs text-gray-400">SKU: {product.sku}</div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {product.category || "-"}
