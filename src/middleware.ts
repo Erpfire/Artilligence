@@ -100,12 +100,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Public auth routes: redirect logged-in users to their dashboard
-  if (pathname === "/login" || pathname.startsWith("/join")) {
+  // Redirect logged-in users away from login page
+  if (pathname === "/login") {
     if (token && !token.blocked && token.id) {
       const dest = token.role === "ADMIN" ? "/admin" : "/dashboard";
       return NextResponse.redirect(new URL(dest, request.url));
     }
+    const response = NextResponse.next();
+    addSecurityHeaders(response);
+    return response;
+  }
+
+  // Allow /join routes for everyone (referral links should always work)
+  if (pathname.startsWith("/join")) {
     const response = NextResponse.next();
     addSecurityHeaders(response);
     return response;
