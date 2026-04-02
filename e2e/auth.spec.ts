@@ -377,11 +377,12 @@ test.describe("Protected Routes", () => {
     await page.waitForURL("**/dashboard");
   });
 
-  test("logged-in user visiting /join → redirected", async ({ page }) => {
+  test("logged-in user visiting /join → sees registration page (not redirected)", async ({ page }) => {
     await login(page, "root@artilligence.com", "member123456");
     await page.waitForURL("**/dashboard", { timeout: 15000 });
     await page.goto("/join/ROOT01");
-    await page.waitForURL("**/dashboard");
+    // Referral links should work even when logged in
+    await expect(page.locator("text=referred by")).toBeVisible({ timeout: 10000 });
   });
 });
 
@@ -393,9 +394,9 @@ test.describe("Concurrent Registration", () => {
   test("two simultaneous registrations → no position conflicts", async ({
     request,
   }) => {
-    // Register sequentially first to verify correct placement
+    // API now expects FormData — use Playwright's multipart option
     const res1 = await request.post("/api/auth/register", {
-      data: {
+      multipart: {
         name: "Concurrent A",
         email: "concurrent-a@test.com",
         phone: "9876543240",
@@ -406,7 +407,7 @@ test.describe("Concurrent Registration", () => {
     });
 
     const res2 = await request.post("/api/auth/register", {
-      data: {
+      multipart: {
         name: "Concurrent B",
         email: "concurrent-b@test.com",
         phone: "9876543241",
@@ -430,5 +431,27 @@ test.describe("Concurrent Registration", () => {
       expect(memberA!.position).not.toBe(memberB!.position);
     }
     // Otherwise: placed under different parents — no conflict by definition
+  });
+});
+
+// ============================================================
+// REFERRAL LINK — LOGGED-IN ACCESS
+// ============================================================
+
+test.describe("Referral Link Access", () => {
+  test("logged-in member can access /join referral link (no redirect)", async ({ page }) => {
+    await login(page, "root@artilligence.com", "member123456");
+    await page.waitForURL("**/dashboard", { timeout: 15000 });
+    await page.goto("/join/ROOT01");
+    // Should NOT redirect — should show the registration page
+    await expect(page.locator("text=referred by")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("text=Rajesh Kumar")).toBeVisible();
+  });
+
+  test("logged-in admin can access /join referral link", async ({ page }) => {
+    await login(page, "admin@artilligence.com", "admin123456");
+    await page.waitForURL("**/admin", { timeout: 15000 });
+    await page.goto("/join/ROOT01");
+    await expect(page.locator("text=referred by")).toBeVisible({ timeout: 10000 });
   });
 });
