@@ -2,7 +2,7 @@ node_modules/
 .next/
 .env
 .env.bak
-uploads/
+/uploads/
 test-results/
 tsconfig.tsbuildinfo
 .playwright-mcp/

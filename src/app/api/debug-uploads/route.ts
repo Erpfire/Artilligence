@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { readdir, stat } from "fs/promises";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const cwd = process.cwd();
   const uploadsDir = path.join(cwd, "uploads");
