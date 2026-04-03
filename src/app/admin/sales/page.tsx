@@ -98,6 +98,15 @@ export default function AdminSalesPage() {
   const salesFetchControllerRef = useRef<AbortController | null>(null);
   const salesFetchRequestIdRef = useRef(0);
 
+  // Summary state
+  const [summary, setSummary] = useState<{
+    totalApprovedAmount: string;
+    totalApprovedCount: number;
+    breakdown: Record<string, number>;
+  } | null>(null);
+  const [summaryDateFrom, setSummaryDateFrom] = useState("");
+  const [summaryDateTo, setSummaryDateTo] = useState("");
+
   const fetchSales = useCallback(async () => {
     salesFetchControllerRef.current?.abort();
     const controller = new AbortController();
@@ -156,6 +165,20 @@ export default function AdminSalesPage() {
     };
   }, [fetchSales]);
 
+  const fetchSummary = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (summaryDateFrom) params.set("dateFrom", summaryDateFrom);
+    if (summaryDateTo) params.set("dateTo", summaryDateTo);
+    const res = await fetch(`/api/admin/sales/summary?${params.toString()}`);
+    if (res.ok) {
+      setSummary(await res.json());
+    }
+  }, [summaryDateFrom, summaryDateTo]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
   useEffect(() => {
     setPage(1);
     setSelectedIds(new Set());
@@ -178,6 +201,7 @@ export default function AdminSalesPage() {
     });
     if (res.ok) {
       await fetchSales();
+      fetchSummary();
       if (selectedSale?.id === saleId) {
         await fetchSaleDetail(saleId);
       }
@@ -198,6 +222,7 @@ export default function AdminSalesPage() {
       setRejectingSaleId(null);
       setRejectionReason("");
       await fetchSales();
+      fetchSummary();
       if (selectedSale?.id === saleId) {
         await fetchSaleDetail(saleId);
       }
@@ -216,6 +241,7 @@ export default function AdminSalesPage() {
     if (res.ok) {
       setSelectedIds(new Set());
       await fetchSales();
+      fetchSummary();
     }
     setActionLoading(false);
   }
@@ -273,6 +299,7 @@ export default function AdminSalesPage() {
       setReturnReason("");
       setReturnPreview([]);
       await fetchSales();
+      fetchSummary();
       if (selectedSale?.id === saleId) {
         await fetchSaleDetail(saleId);
       }
@@ -317,6 +344,69 @@ export default function AdminSalesPage() {
           </button>
         )}
       </div>
+
+      {/* Sales Summary */}
+      {summary && (
+        <div className="mb-6" data-testid="sales-summary-section">
+          {/* Date filter row */}
+          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
+              <input
+                type="date"
+                value={summaryDateFrom}
+                onChange={(e) => setSummaryDateFrom(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                data-testid="summary-date-from"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
+              <input
+                type="date"
+                value={summaryDateTo}
+                onChange={(e) => setSummaryDateTo(e.target.value)}
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                data-testid="summary-date-to"
+              />
+            </div>
+            {(summaryDateFrom || summaryDateTo) && (
+              <button
+                onClick={() => { setSummaryDateFrom(""); setSummaryDateTo(""); }}
+                className="rounded-md bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-200"
+                data-testid="summary-clear-dates"
+              >
+                Clear Dates
+              </button>
+            )}
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            <div className="rounded-lg bg-white p-4 shadow-sm border col-span-2" data-testid="summary-approved-amount">
+              <p className="text-xs font-medium text-gray-500 uppercase">Approved Sales Total</p>
+              <p className="mt-1 text-2xl font-bold text-gray-900">{formatINR(summary.totalApprovedAmount)}</p>
+              <p className="mt-0.5 text-xs text-gray-400">{summary.totalApprovedCount} sale{summary.totalApprovedCount !== 1 ? "s" : ""}</p>
+            </div>
+            <div className="rounded-lg bg-yellow-50 p-4 shadow-sm border border-yellow-200" data-testid="summary-pending-count">
+              <p className="text-xs font-medium text-yellow-700 uppercase">Pending</p>
+              <p className="mt-1 text-xl font-bold text-yellow-800">{summary.breakdown.PENDING}</p>
+            </div>
+            <div className="rounded-lg bg-green-50 p-4 shadow-sm border border-green-200" data-testid="summary-approved-count">
+              <p className="text-xs font-medium text-green-700 uppercase">Approved</p>
+              <p className="mt-1 text-xl font-bold text-green-800">{summary.breakdown.APPROVED}</p>
+            </div>
+            <div className="rounded-lg bg-red-50 p-4 shadow-sm border border-red-200" data-testid="summary-rejected-count">
+              <p className="text-xs font-medium text-red-700 uppercase">Rejected</p>
+              <p className="mt-1 text-xl font-bold text-red-800">{summary.breakdown.REJECTED}</p>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-4 shadow-sm border" data-testid="summary-returned-count">
+              <p className="text-xs font-medium text-gray-500 uppercase">Returned</p>
+              <p className="mt-1 text-xl font-bold text-gray-700">{summary.breakdown.RETURNED}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b" data-testid="sales-tabs">

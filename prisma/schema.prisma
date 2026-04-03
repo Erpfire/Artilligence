@@ -168,7 +168,7 @@ model Commission {
   sourceMemberId String         @map("source_member_id")
   sourceMember   User           @relation("SourceMember", fields: [sourceMemberId], references: [id])
   level          Int
-  percentage     Decimal        @db.Decimal(5, 2)
+  percentage     Decimal        @db.Decimal(6, 3)
   amount         Decimal        @db.Decimal(10, 2)
   type           CommissionType @default(EARNING)
   createdAt      DateTime       @default(now()) @map("created_at")
@@ -184,7 +184,7 @@ model Commission {
 model CommissionSetting {
   id         String   @id @default(uuid())
   level      Int      @unique
-  percentage Decimal  @db.Decimal(5, 2)
+  percentage Decimal  @db.Decimal(6, 3)
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("commission_settings")
@@ -287,8 +287,8 @@ model AuditLog {
 model CommissionRateHistory {
   id            String   @id @default(uuid())
   level         Int
-  oldPercentage Decimal? @map("old_percentage") @db.Decimal(5, 2)
-  newPercentage Decimal? @map("new_percentage") @db.Decimal(5, 2)
+  oldPercentage Decimal? @map("old_percentage") @db.Decimal(6, 3)
+  newPercentage Decimal? @map("new_percentage") @db.Decimal(6, 3)
   action        String   // UPDATED, ADDED, REMOVED
   changedById   String   @map("changed_by")
   createdAt     DateTime @default(now()) @map("created_at")

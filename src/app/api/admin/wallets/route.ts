@@ -25,6 +25,10 @@ export async function GET(request: NextRequest) {
   const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "10")));
   const search = searchParams.get("search")?.trim() || "";
 
+  const pendingOnly = searchParams.get("pendingOnly") === "true";
+  const sortBy = searchParams.get("sortBy") || "pending";
+  const sortOrder = searchParams.get("sortOrder") === "asc" ? "asc" : "desc";
+
   const userWhere: Record<string, unknown> = { role: "MEMBER" };
   if (search) {
     userWhere.OR = [
@@ -34,19 +38,28 @@ export async function GET(request: NextRequest) {
     ];
   }
 
+  const walletWhere: Record<string, unknown> = { user: userWhere };
+  if (pendingOnly) {
+    walletWhere.pending = { gt: 0 };
+  }
+
+  // Sortable columns
+  const validSortColumns = ["pending", "totalEarned", "paidOut"];
+  const orderByColumn = validSortColumns.includes(sortBy) ? sortBy : "pending";
+
   const [wallets, total, pendingSum] = await Promise.all([
     prisma.wallet.findMany({
-      where: { user: userWhere },
+      where: walletWhere,
       include: {
         user: {
           select: { id: true, name: true, email: true, phone: true, status: true },
         },
       },
-      orderBy: { pending: "desc" },
+      orderBy: { [orderByColumn]: sortOrder },
       skip: (page - 1) * limit,
       take: limit,
     }),
-    prisma.wallet.count({ where: { user: userWhere } }),
+    prisma.wallet.count({ where: walletWhere }),
     prisma.wallet.aggregate({
       where: { user: { role: "MEMBER" } },
       _sum: { pending: true },

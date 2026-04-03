@@ -5,6 +5,11 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { formatINR, formatDate } from "@/lib/i18n";
 import { WalletSkeleton } from "@/components/Skeleton";
 
+interface CommissionRate {
+  level: number;
+  percentage: string;
+}
+
 interface WalletTransaction {
   id: string;
   type: "COMMISSION" | "COMMISSION_REVERSAL" | "PAYOUT" | "ADJUSTMENT";
@@ -35,6 +40,7 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
+  const [commissionRates, setCommissionRates] = useState<CommissionRate[]>([]);
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
@@ -64,6 +70,13 @@ export default function WalletPage() {
   useEffect(() => {
     fetchWallet();
   }, [fetchWallet]);
+
+  useEffect(() => {
+    fetch("/api/dashboard/commission-rates")
+      .then((r) => (r.ok ? r.json() : { settings: [] }))
+      .then((data) => setCommissionRates(data.settings))
+      .catch(() => {});
+  }, []);
 
   // Reset to page 1 when filters change
   function handleTypeChange(val: string) {
@@ -275,6 +288,53 @@ export default function WalletPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Potential Earnings Table */}
+      {commissionRates.length > 0 && (
+        <div className="mt-8" data-testid="potential-earnings-section">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1" data-testid="potential-earnings-title">
+            {t("earnings.title")}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">{t("earnings.subtitle")}</p>
+
+          <div className="overflow-x-auto rounded-lg bg-white shadow-sm border">
+            <table className="w-full text-sm" data-testid="potential-earnings-table">
+              <thead className="bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-3">{t("earnings.level")}</th>
+                  <th className="px-4 py-3 text-right">{t("earnings.commission")}</th>
+                  <th className="px-4 py-3 text-right">{t("earnings.earning")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {commissionRates.map((rate) => {
+                  const pct = parseFloat(rate.percentage);
+                  const earning = (30000 * pct) / 100;
+                  return (
+                    <tr key={rate.level} data-testid={`earnings-row-${rate.level}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{rate.level}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{pct.toFixed(pct < 0.01 ? 3 : 2)}%</td>
+                      <td className="px-4 py-3 text-right font-medium text-green-600">{formatINR(earning)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-gray-50">
+                <tr data-testid="earnings-total-row">
+                  <td className="px-4 py-3 font-semibold text-gray-900" colSpan={2}>
+                    {t("earnings.total")}
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-green-700" data-testid="earnings-total-amount">
+                    {formatINR(
+                      commissionRates.reduce((sum, r) => sum + (30000 * parseFloat(r.percentage)) / 100, 0)
+                    )}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

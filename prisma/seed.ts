@@ -58,7 +58,7 @@ async function main() {
   });
   console.log(`Root member: ${root.email} (referral: ${root.referralCode})`);
 
-  // 3. Default commission settings (7 levels)
+  // 3. Default commission settings (15 levels, total 26.996%)
   const rates = [
     { level: 1, percentage: 10.0 },
     { level: 2, percentage: 6.0 },
@@ -67,6 +67,14 @@ async function main() {
     { level: 5, percentage: 2.0 },
     { level: 6, percentage: 1.0 },
     { level: 7, percentage: 0.5 },
+    { level: 8, percentage: 0.25 },
+    { level: 9, percentage: 0.1 },
+    { level: 10, percentage: 0.05 },
+    { level: 11, percentage: 0.04 },
+    { level: 12, percentage: 0.03 },
+    { level: 13, percentage: 0.02 },
+    { level: 14, percentage: 0.005 },
+    { level: 15, percentage: 0.001 },
   ];
 
   for (const rate of rates) {
@@ -76,7 +84,7 @@ async function main() {
       create: { level: rate.level, percentage: rate.percentage },
     });
   }
-  console.log("Commission settings: 7 levels created");
+  console.log("Commission settings: 15 levels created");
 
   // 4. Sample products (Exide batteries)
   const products = [

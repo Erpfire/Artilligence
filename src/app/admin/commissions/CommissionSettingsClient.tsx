@@ -227,7 +227,10 @@ export default function CommissionSettingsClient({
                       </div>
                     ) : (
                       <span className="text-sm" data-testid={`percentage-${setting.level}`}>
-                        {Number(setting.percentage).toFixed(2)}%
+                        {(() => {
+                          const pct = Number(setting.percentage);
+                          return pct < 0.01 ? pct.toFixed(3) : pct.toFixed(2);
+                        })()}%
                       </span>
                     )}
                   </td>

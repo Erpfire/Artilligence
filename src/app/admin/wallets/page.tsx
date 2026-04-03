@@ -31,6 +31,9 @@ export default function AdminWalletsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [sortBy, setSortBy] = useState("pending");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Modal state
   const [modal, setModal] = useState<{
@@ -49,6 +52,9 @@ export default function AdminWalletsPage() {
     params.set("page", String(currentPage));
     params.set("limit", "10");
     if (search) params.set("search", search);
+    if (pendingOnly) params.set("pendingOnly", "true");
+    params.set("sortBy", sortBy);
+    params.set("sortOrder", sortOrder);
 
     const res = await fetch(`/api/admin/wallets?${params.toString()}`);
     if (res.ok) {
@@ -58,7 +64,7 @@ export default function AdminWalletsPage() {
       setPagination(data.pagination);
     }
     setLoading(false);
-  }, [currentPage, search]);
+  }, [currentPage, search, pendingOnly, sortBy, sortOrder]);
 
   useEffect(() => {
     fetchWallets();
@@ -168,6 +174,26 @@ export default function AdminWalletsPage() {
     setCurrentPage(1);
   }
 
+  function handleSort(column: string) {
+    if (sortBy === column) {
+      setSortOrder((o) => (o === "desc" ? "asc" : "desc"));
+    } else {
+      setSortBy(column);
+      setSortOrder("desc");
+    }
+    setCurrentPage(1);
+  }
+
+  function handlePendingOnlyToggle() {
+    setPendingOnly((v) => !v);
+    setCurrentPage(1);
+  }
+
+  function sortIndicator(column: string) {
+    if (sortBy !== column) return "";
+    return sortOrder === "desc" ? " ↓" : " ↑";
+  }
+
   return (
     <div data-testid="admin-wallets-page">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -182,8 +208,8 @@ export default function AdminWalletsPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="mb-4">
+      {/* Search + Filter */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
         <input
           type="text"
           value={search}
@@ -192,6 +218,16 @@ export default function AdminWalletsPage() {
           className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
           data-testid="wallets-search"
         />
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={handlePendingOnlyToggle}
+            className="rounded border-gray-300"
+            data-testid="wallets-pending-only"
+          />
+          Pending &gt; 0 only
+        </label>
       </div>
 
       {loading && wallets.length === 0 ? (
@@ -209,9 +245,27 @@ export default function AdminWalletsPage() {
               <thead className="bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Member</th>
-                  <th className="px-4 py-3 text-right">Total Earned</th>
-                  <th className="px-4 py-3 text-right">Pending</th>
-                  <th className="px-4 py-3 text-right">Paid Out</th>
+                  <th
+                    className="px-4 py-3 text-right cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort("totalEarned")}
+                    data-testid="sort-total-earned"
+                  >
+                    Total Earned{sortIndicator("totalEarned")}
+                  </th>
+                  <th
+                    className="px-4 py-3 text-right cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort("pending")}
+                    data-testid="sort-pending"
+                  >
+                    Pending{sortIndicator("pending")}
+                  </th>
+                  <th
+                    className="px-4 py-3 text-right cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => handleSort("paidOut")}
+                    data-testid="sort-paid-out"
+                  >
+                    Paid Out{sortIndicator("paidOut")}
+                  </th>
                   <th className="px-4 py-3 text-center">Actions</th>
                 </tr>
               </thead>

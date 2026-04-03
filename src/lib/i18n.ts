@@ -239,6 +239,14 @@ const translations = {
   // Notifications extras
   "notifications.unread": { en: "unread", hi: "अपठित" },
 
+  // Potential earnings
+  "earnings.title": { en: "Your Earning Potential", hi: "आपकी कमाई की संभावना" },
+  "earnings.subtitle": { en: "Per sale of ₹30,000", hi: "₹30,000 की प्रति बिक्री पर" },
+  "earnings.level": { en: "Level", hi: "स्तर" },
+  "earnings.commission": { en: "Commission %", hi: "कमीशन %" },
+  "earnings.earning": { en: "Earning", hi: "कमाई" },
+  "earnings.total": { en: "Total Commission", hi: "कुल कमीशन" },
+
   // Error handling
   "error.network": { en: "Network error. Please check your connection.", hi: "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें।" },
   "error.sessionExpired": { en: "Session expired. Please log in again.", hi: "सत्र समाप्त हो गया। कृपया फिर से लॉगिन करें।" },
