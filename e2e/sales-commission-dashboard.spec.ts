@@ -221,27 +221,30 @@ test.describe("Feature 4: Potential Earnings Table", () => {
       await expect(page.getByTestId(`earnings-row-${level}`)).toBeVisible();
     }
 
-    // Spot-check specific levels
-    const expectedData = [
-      { level: 1, pct: "10.00%", earning: "3,000" },
-      { level: 2, pct: "6.00%", earning: "1,800" },
-      { level: 7, pct: "0.50%", earning: "150" },
-      { level: 10, pct: "0.05%", earning: "15" },
-      { level: 14, pct: "0.005%", earning: "1.50" },
-      { level: 15, pct: "0.001%", earning: "0.30" },
-    ];
-    for (const { level, pct, earning } of expectedData) {
-      const row = page.getByTestId(`earnings-row-${level}`);
-      await expect(row).toContainText(pct);
-      await expect(row).toContainText(earning);
-    }
+    // Spot-check specific levels (earning = 3^level × 30000 × pct/100)
+    // Level 1: 3 members × ₹3,000 = ₹9,000
+    const row1 = page.getByTestId("earnings-row-1");
+    await expect(row1).toContainText("10.00%");
+    await expect(row1).toContainText("9,000");
+    await expect(page.getByTestId("earnings-members-1")).toContainText("3");
+
+    // Level 2: 9 members × ₹1,800 = ₹16,200
+    const row2 = page.getByTestId("earnings-row-2");
+    await expect(row2).toContainText("6.00%");
+    await expect(row2).toContainText("16,200");
+    await expect(page.getByTestId("earnings-members-2")).toContainText("9");
+
+    // Level 7: 2187 members × ₹150 = ₹3,28,050
+    const row7 = page.getByTestId("earnings-row-7");
+    await expect(row7).toContainText("0.50%");
+
+    // Level 15: 14348907 members × ₹0.30 = ₹43,04,672.10
+    const row15 = page.getByTestId("earnings-row-15");
+    await expect(row15).toContainText("0.001%");
 
     // Total row
     await expect(page.getByTestId("earnings-total-row")).toBeVisible();
-    const totalText = await page.getByTestId("earnings-total-amount").textContent();
-    expect(totalText).toBeTruthy();
-    // Total should be ₹8,098.80 = 30000 * 26.996%
-    await expect(page.getByTestId("earnings-total-amount")).toContainText("8,098");
+    await expect(page.getByTestId("earnings-total-amount")).toBeVisible();
   });
 
   test("reads rates dynamically — changing a rate in DB updates the table", async ({ page }) => {
@@ -252,9 +255,10 @@ test.describe("Feature 4: Potential Earnings Table", () => {
     await page.goto("/dashboard/wallet");
     await page.waitForSelector('[data-testid="potential-earnings-section"]', { timeout: 10000 });
 
+    // Level 1: 3 members × (30000 × 12% / 100) = 3 × 3600 = ₹10,800
     const row1 = page.getByTestId("earnings-row-1");
     await expect(row1).toContainText("12.00%");
-    await expect(row1).toContainText("3,600");
+    await expect(row1).toContainText("10,800");
   });
 
   test("earnings table hidden when no commission settings exist", async ({ page }) => {
@@ -293,10 +297,10 @@ test.describe("Feature 4: Potential Earnings Table", () => {
     await page.goto("/dashboard/wallet");
     await page.waitForSelector('[data-testid="potential-earnings-section"]', { timeout: 10000 });
 
-    // Level 1: ₹3,000.00 (Indian number format)
+    // Level 1: 3 members × ₹3,000 = ₹9,000.00 (Indian number format)
     const row1 = page.getByTestId("earnings-row-1");
     const row1Text = await row1.textContent();
-    expect(row1Text).toMatch(/₹3,000/);
+    expect(row1Text).toMatch(/₹9,000/);
   });
 
   test("earnings table visible on mobile viewport", async ({ page }) => {

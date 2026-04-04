@@ -243,6 +243,7 @@ const translations = {
   "earnings.title": { en: "Your Earning Potential", hi: "आपकी कमाई की संभावना" },
   "earnings.subtitle": { en: "Per sale of ₹30,000", hi: "₹30,000 की प्रति बिक्री पर" },
   "earnings.level": { en: "Level", hi: "स्तर" },
+  "earnings.members": { en: "Members", hi: "सदस्य" },
   "earnings.commission": { en: "Commission %", hi: "कमीशन %" },
   "earnings.earning": { en: "Earning", hi: "कमाई" },
   "earnings.total": { en: "Total Commission", hi: "कुल कमीशन" },
