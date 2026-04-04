@@ -316,21 +316,64 @@ test.describe("Feature 4: Potential Earnings Table", () => {
     await expect(page.getByTestId("earnings-total-row")).toBeVisible();
   });
 
-  test("earnings table also appears on main dashboard page", async ({ page }) => {
+  test("earnings table also appears on main dashboard page with all 15 levels", async ({ page }) => {
     await login(page, MEMBER_EMAIL, MEMBER_PASSWORD);
     await page.waitForURL("/dashboard");
 
-    // Wait for earnings section on main dashboard
     await page.waitForSelector('[data-testid="dashboard-earnings-section"]', { timeout: 10000 });
     await expect(page.getByTestId("dashboard-earnings-table")).toBeVisible();
 
-    // Verify level 1 row exists with correct values
+    // All 15 rows present
+    for (let level = 1; level <= 15; level++) {
+      await expect(page.getByTestId(`dashboard-earnings-row-${level}`)).toBeVisible();
+    }
+
+    // Level 1: 3 members × 10% of ₹30,000 = ₹9,000
     const row1 = page.getByTestId("dashboard-earnings-row-1");
-    await expect(row1).toBeVisible();
     await expect(row1).toContainText("10.00%");
     await expect(row1).toContainText("9,000");
 
-    // Verify total row
+    // Level 2: 9 members × 6% = ₹16,200
+    const row2 = page.getByTestId("dashboard-earnings-row-2");
+    await expect(row2).toContainText("6.00%");
+    await expect(row2).toContainText("16,200");
+
+    // Total row
+    await expect(page.getByTestId("dashboard-earnings-total")).toBeVisible();
+  });
+
+  test("dashboard earnings table hidden when no commission settings", async ({ page }) => {
+    dbQuery("DELETE FROM commission_settings");
+
+    await login(page, MEMBER_EMAIL, MEMBER_PASSWORD);
+    await page.waitForURL("/dashboard");
+    await page.waitForSelector('[data-testid="dashboard-home"]', { timeout: 10000 });
+    await page.waitForTimeout(2000);
+    await expect(page.getByTestId("dashboard-earnings-section")).toBeHidden();
+  });
+
+  test("dashboard and wallet page show identical earnings totals", async ({ page }) => {
+    await login(page, MEMBER_EMAIL, MEMBER_PASSWORD);
+    await page.waitForURL("/dashboard");
+
+    await page.waitForSelector('[data-testid="dashboard-earnings-total"]', { timeout: 10000 });
+    const dashboardTotal = await page.getByTestId("dashboard-earnings-total").textContent();
+
+    await page.goto("/dashboard/wallet");
+    await page.waitForSelector('[data-testid="earnings-total-amount"]', { timeout: 10000 });
+    const walletTotal = await page.getByTestId("earnings-total-amount").textContent();
+
+    expect(dashboardTotal).toBe(walletTotal);
+  });
+
+  test("dashboard earnings table visible on mobile viewport", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await login(page, MEMBER_EMAIL, MEMBER_PASSWORD);
+    await page.waitForURL("/dashboard");
+
+    await page.waitForSelector('[data-testid="dashboard-earnings-section"]', { timeout: 10000 });
+    await expect(page.getByTestId("dashboard-earnings-table")).toBeVisible();
+    await expect(page.getByTestId("dashboard-earnings-row-1")).toBeVisible();
     await expect(page.getByTestId("dashboard-earnings-total")).toBeVisible();
   });
 });
