@@ -315,6 +315,24 @@ test.describe("Feature 4: Potential Earnings Table", () => {
     await expect(page.getByTestId("earnings-row-1")).toBeVisible();
     await expect(page.getByTestId("earnings-total-row")).toBeVisible();
   });
+
+  test("earnings table also appears on main dashboard page", async ({ page }) => {
+    await login(page, MEMBER_EMAIL, MEMBER_PASSWORD);
+    await page.waitForURL("/dashboard");
+
+    // Wait for earnings section on main dashboard
+    await page.waitForSelector('[data-testid="dashboard-earnings-section"]', { timeout: 10000 });
+    await expect(page.getByTestId("dashboard-earnings-table")).toBeVisible();
+
+    // Verify level 1 row exists with correct values
+    const row1 = page.getByTestId("dashboard-earnings-row-1");
+    await expect(row1).toBeVisible();
+    await expect(row1).toContainText("10.00%");
+    await expect(row1).toContainText("9,000");
+
+    // Verify total row
+    await expect(page.getByTestId("dashboard-earnings-total")).toBeVisible();
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

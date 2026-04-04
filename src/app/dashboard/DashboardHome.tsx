@@ -7,6 +7,11 @@ import { formatINR, formatDate } from "@/lib/i18n";
 import { DashboardSkeleton } from "@/components/Skeleton";
 import OnboardingTour from "./OnboardingTour";
 
+interface CommissionRate {
+  level: number;
+  percentage: string;
+}
+
 interface PinnedAnnouncement {
   id: string;
   titleEn: string;
@@ -45,6 +50,7 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
   const [loading, setLoading] = useState(true);
   const [runOnboarding, setRunOnboarding] = useState(false);
   const [pinnedAnnouncements, setPinnedAnnouncements] = useState<PinnedAnnouncement[]>([]);
+  const [commissionRates, setCommissionRates] = useState<CommissionRate[]>([]);
 
   const fetchStats = useCallback(async (p: Period) => {
     setLoading(true);
@@ -67,6 +73,13 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
     fetch("/api/dashboard/announcements")
       .then((r) => r.ok ? r.json() : { announcements: [] })
       .then((data) => setPinnedAnnouncements(data.announcements.filter((a: PinnedAnnouncement) => a.isPinned)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/dashboard/commission-rates")
+      .then((r) => (r.ok ? r.json() : { settings: [] }))
+      .then((data) => setCommissionRates(data.settings))
       .catch(() => {});
   }, []);
 
@@ -284,6 +297,57 @@ export default function DashboardHome({ showOnboarding }: { showOnboarding: bool
           </>
         )}
       </div>
+
+      {/* Potential Earnings Table */}
+      {commissionRates.length > 0 && (
+        <div className="mt-6" data-testid="dashboard-earnings-section">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">{t("earnings.title")}</h2>
+          <p className="text-sm text-gray-500 mb-3">{t("earnings.subtitle")}</p>
+
+          <div className="overflow-x-auto rounded-lg bg-white shadow-sm border">
+            <table className="w-full text-sm" data-testid="dashboard-earnings-table">
+              <thead className="bg-gray-50 text-left text-xs font-medium uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-3">{t("earnings.level")}</th>
+                  <th className="px-4 py-3 text-right">{t("earnings.members")}</th>
+                  <th className="px-4 py-3 text-right">{t("earnings.commission")}</th>
+                  <th className="px-4 py-3 text-right">{t("earnings.earning")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {commissionRates.map((rate) => {
+                  const pct = parseFloat(rate.percentage);
+                  const members = Math.pow(3, rate.level);
+                  const earning = members * (30000 * pct) / 100;
+                  return (
+                    <tr key={rate.level} data-testid={`dashboard-earnings-row-${rate.level}`}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{rate.level}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{members.toLocaleString("en-IN")}</td>
+                      <td className="px-4 py-3 text-right text-gray-600">{pct.toFixed(pct < 0.01 ? 3 : 2)}%</td>
+                      <td className="px-4 py-3 text-right font-medium text-green-600">{formatINR(earning)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-gray-50">
+                <tr>
+                  <td className="px-4 py-3 font-semibold text-gray-900" colSpan={3}>
+                    {t("earnings.total")}
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-green-700" data-testid="dashboard-earnings-total">
+                    {formatINR(
+                      commissionRates.reduce((sum, r) => {
+                        const members = Math.pow(3, r.level);
+                        return sum + members * (30000 * parseFloat(r.percentage)) / 100;
+                      }, 0)
+                    )}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Onboarding */}
       {runOnboarding && (
