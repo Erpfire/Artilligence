@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search")?.trim() || "";
   const category = searchParams.get("category")?.trim() || "";
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { isCombo: true };
 
   if (search) {
     where.OR = [
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, nameHi, description, descriptionHi, price, sku, category, imageUrl, warranty, ah, remark, isActive } = body;
+  const { name, nameHi, description, descriptionHi, price, sku, category, imageUrl, images, warranty, ah, remark, isActive } = body;
 
   // Validation
   const errors: string[] = [];
@@ -98,9 +98,11 @@ export async function POST(request: NextRequest) {
       sku: sku?.trim() || null,
       category: category.trim(),
       imageUrl: imageUrl?.trim() || null,
+      images: images || null,
       warranty: warranty?.trim() || null,
       ah: ah?.trim() || null,
       remark: remark?.trim() || null,
+      isCombo: true,
       isActive: isActive !== false,
     },
   });

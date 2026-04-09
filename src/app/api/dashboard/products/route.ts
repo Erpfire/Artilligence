@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { isActive: true, isCombo: true },
     select: {
       id: true,
       name: true,
@@ -18,6 +18,7 @@ export async function GET() {
       price: true,
       sku: true,
       category: true,
+      images: true,
     },
     orderBy: { name: "asc" },
   });
@@ -30,6 +31,7 @@ export async function GET() {
       price: p.price.toString(),
       sku: p.sku,
       category: p.category,
+      images: p.images,
     })),
   });
 }

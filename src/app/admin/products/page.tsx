@@ -1,18 +1,7 @@
 import { prisma } from "@/lib/db";
 import ProductsTable from "./ProductsTable";
 
-const CATEGORIES = [
-  "TWO-WHEELER",
-  "CAR/SUV",
-  "CAR/SUV/TRACTOR",
-  "TRACTOR, LCV & HCV",
-  "HCV",
-  "LCV",
-  "3-WHEELER",
-  "3-WHEELER & LCV",
-  "INVERTER",
-  "INVERTER BATTERY",
-];
+const CATEGORIES = ["COMBO"];
 
 export default async function ProductsPage({
   searchParams,
@@ -24,7 +13,7 @@ export default async function ProductsPage({
   const search = searchParams.search?.trim() || "";
   const category = searchParams.category?.trim() || "";
 
-  const where: Record<string, unknown> = {};
+  const where: Record<string, unknown> = { isCombo: true };
 
   if (search) {
     where.OR = [

@@ -12,12 +12,15 @@ interface Product {
   price: string;
   sku: string | null;
   category: string | null;
+  images: string[] | null;
 }
 
 interface LineItem {
   key: number;
   productId: string;
   quantity: number;
+  customPrice: string;
+  remark: string;
 }
 
 let lineKeyCounter = 0;
@@ -37,7 +40,7 @@ export default function SaleForm({
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [items, setItems] = useState<LineItem[]>([
-    { key: ++lineKeyCounter, productId: "", quantity: 1 },
+    { key: ++lineKeyCounter, productId: "", quantity: 1, customPrice: "", remark: "" },
   ]);
   const [billPhoto, setBillPhoto] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -51,8 +54,16 @@ export default function SaleForm({
       .catch(() => {});
   }, []);
 
-  function getProductPrice(productId: string): number {
+  function isCustomOrder(productId: string): boolean {
     const p = products.find((p) => p.id === productId);
+    return p?.sku === "COMBO-CUSTOM";
+  }
+
+  function getItemPrice(item: LineItem): number {
+    if (isCustomOrder(item.productId) && item.customPrice) {
+      return parseFloat(item.customPrice) || 0;
+    }
+    const p = products.find((p) => p.id === item.productId);
     return p ? parseFloat(p.price) : 0;
   }
 
@@ -64,12 +75,12 @@ export default function SaleForm({
 
   function calculateTotal(): number {
     return items.reduce((sum, item) => {
-      return sum + getProductPrice(item.productId) * item.quantity;
+      return sum + getItemPrice(item) * item.quantity;
     }, 0);
   }
 
   function addItem() {
-    setItems([...items, { key: ++lineKeyCounter, productId: "", quantity: 1 }]);
+    setItems([...items, { key: ++lineKeyCounter, productId: "", quantity: 1, customPrice: "", remark: "" }]);
   }
 
   function removeItem(key: number) {
@@ -77,11 +88,18 @@ export default function SaleForm({
     setItems(items.filter((i) => i.key !== key));
   }
 
-  function updateItem(key: number, field: "productId" | "quantity", value: string | number) {
+  function updateItem(key: number, field: "productId" | "quantity" | "customPrice" | "remark", value: string | number) {
     setItems(
-      items.map((i) =>
-        i.key === key ? { ...i, [field]: value } : i
-      )
+      items.map((i) => {
+        if (i.key !== key) return i;
+        const updated = { ...i, [field]: value };
+        // Reset custom fields when switching away from Custom Order
+        if (field === "productId") {
+          updated.customPrice = "";
+          updated.remark = "";
+        }
+        return updated;
+      })
     );
   }
 
@@ -120,7 +138,14 @@ export default function SaleForm({
     formData.append("customerPhone", customerPhone.trim());
     formData.append(
       "items",
-      JSON.stringify(validItems.map((i) => ({ productId: i.productId, quantity: i.quantity })))
+      JSON.stringify(validItems.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        ...(isCustomOrder(i.productId) && {
+          customPrice: parseFloat(i.customPrice) || 0,
+          remark: i.remark,
+        }),
+      })))
     );
     formData.append("billPhoto", billPhoto!);
 
@@ -212,48 +237,98 @@ export default function SaleForm({
             {t("sales.products")}
           </label>
           <div className="mt-2 space-y-3" data-testid="product-lines">
-            {items.map((item, idx) => (
-              <div key={item.key} className="flex gap-2 items-end" data-testid={`product-line-${idx}`}>
-                <div className="flex-1">
-                  <select
-                    value={item.productId}
-                    onChange={(e) => updateItem(item.key, "productId", e.target.value)}
-                    className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    data-testid={`product-select-${idx}`}
-                  >
-                    <option value="">{t("sales.selectProduct")}</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {locale === "hi" && p.nameHi ? p.nameHi : p.name} — {formatINR(p.price)}
-                      </option>
-                    ))}
-                  </select>
+            {items.map((item, idx) => {
+              const selectedProduct = products.find((p) => p.id === item.productId);
+              const imgs: string[] = selectedProduct?.images && Array.isArray(selectedProduct.images) ? selectedProduct.images : [];
+              const isCustom = isCustomOrder(item.productId);
+              return (
+              <div key={item.key} className={`rounded-lg border p-3 space-y-2 ${isCustom ? "border-amber-300 bg-amber-50/30" : "border-gray-200"}`} data-testid={`product-line-${idx}`}>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <select
+                      value={item.productId}
+                      onChange={(e) => updateItem(item.key, "productId", e.target.value)}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid={`product-select-${idx}`}
+                    >
+                      <option value="">{t("sales.selectProduct")}</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {locale === "hi" && p.nameHi ? p.nameHi : p.name}{p.sku !== "COMBO-CUSTOM" ? ` — ${formatINR(p.price)}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-20">
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => updateItem(item.key, "quantity", Math.max(1, parseInt(e.target.value) || 1))}
+                      className="block w-full rounded-md border border-gray-300 px-2 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      data-testid={`product-qty-${idx}`}
+                    />
+                  </div>
+                  <div className="w-28 text-right text-sm font-medium text-gray-700 py-2" data-testid={`product-subtotal-${idx}`}>
+                    {item.productId ? formatINR(getItemPrice(item) * item.quantity) : "—"}
+                  </div>
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeItem(item.key)}
+                      className="text-red-500 hover:text-red-700 text-sm px-2 py-2"
+                      data-testid={`product-remove-${idx}`}
+                    >
+                      {t("sales.removeProduct")}
+                    </button>
+                  )}
                 </div>
-                <div className="w-20">
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateItem(item.key, "quantity", Math.max(1, parseInt(e.target.value) || 1))}
-                    className="block w-full rounded-md border border-gray-300 px-2 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    data-testid={`product-qty-${idx}`}
-                  />
-                </div>
-                <div className="w-28 text-right text-sm font-medium text-gray-700 py-2" data-testid={`product-subtotal-${idx}`}>
-                  {item.productId ? formatINR(getProductPrice(item.productId) * item.quantity) : "—"}
-                </div>
-                {items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.key)}
-                    className="text-red-500 hover:text-red-700 text-sm px-2 py-2"
-                    data-testid={`product-remove-${idx}`}
-                  >
-                    {t("sales.removeProduct")}
-                  </button>
+                {/* Custom Order fields */}
+                {isCustom && (
+                  <div className="space-y-2 pt-1">
+                    <div>
+                      <label className="block text-sm font-medium text-amber-800">
+                        Custom Price (INR)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        step="0.01"
+                        value={item.customPrice}
+                        onChange={(e) => updateItem(item.key, "customPrice", e.target.value)}
+                        placeholder="Enter agreed price"
+                        className="mt-1 block w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        data-testid={`custom-price-${idx}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-amber-800">
+                        Products Included
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={item.remark}
+                        onChange={(e) => updateItem(item.key, "remark", e.target.value)}
+                        placeholder="List the products in this custom combo..."
+                        className="mt-1 block w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        data-testid={`custom-remark-${idx}`}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Bento image preview for selected combo */}
+                {imgs.length >= 3 && !isCustom && (
+                  <div className="w-full max-w-xs space-y-0.5">
+                    <img src={imgs[0]} alt="" className="w-full h-24 object-cover rounded-t border bg-gray-50" />
+                    <div className="flex gap-0.5">
+                      <img src={imgs[1]} alt="" className="w-1/2 h-16 object-cover rounded-bl border bg-gray-50" />
+                      <img src={imgs[2]} alt="" className="w-1/2 h-16 object-cover rounded-br border bg-gray-50" />
+                    </div>
+                  </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
           <button
             type="button"

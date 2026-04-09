@@ -45,7 +45,7 @@ export async function PUT(
   }
 
   const body = await request.json();
-  const { name, nameHi, description, descriptionHi, price, sku, category, imageUrl, warranty, ah, remark, isActive } = body;
+  const { name, nameHi, description, descriptionHi, price, sku, category, imageUrl, images, warranty, ah, remark, isActive } = body;
 
   // Validation
   const errors: string[] = [];
@@ -79,6 +79,7 @@ export async function PUT(
       sku: sku?.trim() || null,
       category: category.trim(),
       imageUrl: imageUrl?.trim() || null,
+      images: images || existing.images,
       warranty: warranty?.trim() || null,
       ah: ah?.trim() || null,
       remark: remark?.trim() || null,

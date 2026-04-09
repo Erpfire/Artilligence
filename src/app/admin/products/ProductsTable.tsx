@@ -11,8 +11,10 @@ interface Product {
   category: string | null;
   price: string;
   imageUrl: string | null;
+  images: string[] | null;
   warranty: string | null;
   ah: string | null;
+  description: string | null;
   isActive: boolean;
 }
 
@@ -142,11 +144,34 @@ export default function ProductsTable({
                 </td>
               </tr>
             ) : (
-              products.map((product) => (
+              products.map((product) => {
+                const imgs: string[] = Array.isArray(product.images) ? product.images : [];
+                return (
                 <tr key={product.id} data-testid={`product-row-${product.id}`}>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      {product.imageUrl ? (
+                    <div className="flex items-center gap-4">
+                      {/* Bento grid: wide image top, two squares bottom */}
+                      {imgs.length >= 3 ? (
+                        <div className="w-24 shrink-0 space-y-0.5">
+                          <img
+                            src={imgs[0]}
+                            alt={product.name}
+                            className="w-24 h-16 object-cover rounded-t border border-b-0 bg-gray-50"
+                          />
+                          <div className="flex gap-0.5">
+                            <img
+                              src={imgs[1]}
+                              alt={product.name}
+                              className="w-[47.5%] h-12 object-cover rounded-bl border bg-gray-50"
+                            />
+                            <img
+                              src={imgs[2]}
+                              alt={product.name}
+                              className="w-[47.5%] h-12 object-cover rounded-br border bg-gray-50"
+                            />
+                          </div>
+                        </div>
+                      ) : product.imageUrl ? (
                         <img
                           src={product.imageUrl}
                           alt={product.name}
@@ -160,7 +185,7 @@ export default function ProductsTable({
                       <div>
                         <div className="text-sm font-medium text-gray-900">{product.name}</div>
                         {product.sku && (
-                          <div className="text-xs text-gray-400">SKU: {product.sku}</div>
+                          <div className="text-xs text-gray-400">{product.sku}</div>
                         )}
                       </div>
                     </div>
@@ -168,7 +193,7 @@ export default function ProductsTable({
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {product.category || "-"}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-700">
                     {Number(product.price).toLocaleString("en-IN", {
                       style: "currency",
                       currency: "INR",
@@ -210,7 +235,8 @@ export default function ProductsTable({
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

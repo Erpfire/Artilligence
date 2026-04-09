@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search")?.trim() || "";
   const category = searchParams.get("category")?.trim() || "";
 
-  const where: Record<string, unknown> = { isActive: true };
+  const where: Record<string, unknown> = { isActive: true, isCombo: false };
 
   if (search) {
     where.OR = [
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.product.findMany({
-      where: { isActive: true, category: { not: null } },
+      where: { isActive: true, isCombo: false, category: { not: null } },
       select: { category: true },
       distinct: ["category"],
       orderBy: { category: "asc" },

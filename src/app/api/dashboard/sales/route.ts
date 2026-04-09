@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     errors.billCode = "Bill code is too long";
   }
 
-  let items: { productId: string; quantity: number }[] = [];
+  let items: { productId: string; quantity: number; customPrice?: number; remark?: string }[] = [];
   try {
     items = itemsJson ? JSON.parse(itemsJson) : [];
   } catch {
@@ -228,6 +228,44 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // --- Validate products and custom orders (before file upload) ---
+  const productIds = items.map((i) => i.productId);
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds }, isActive: true },
+    select: { id: true, price: true, sku: true },
+  });
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  // Verify all products exist
+  for (const item of items) {
+    if (!productMap.has(item.productId)) {
+      return NextResponse.json(
+        { errors: { items: `Product not found: ${item.productId}` } },
+        { status: 400 }
+      );
+    }
+  }
+
+  // Validate custom order items
+  for (const item of items) {
+    const product = productMap.get(item.productId)!;
+    if (product.sku === "COMBO-CUSTOM") {
+      if (!item.customPrice || item.customPrice <= 0) {
+        return NextResponse.json(
+          { errors: { items: "Custom order requires a valid price" } },
+          { status: 400 }
+        );
+      }
+      if (!item.remark || !item.remark.trim()) {
+        return NextResponse.json(
+          { errors: { items: "Custom order requires a description of included products" } },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   // --- File upload ---
   const fileBuffer = Buffer.from(await billPhoto!.arrayBuffer());
   // We'll save with a temp ID first, then update path
@@ -240,35 +278,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // --- Fetch product prices and calculate total ---
-  const productIds = items.map((i) => i.productId);
-  const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, isActive: true },
-    select: { id: true, price: true },
-  });
-
-  const priceMap = new Map(products.map((p) => [p.id, p.price]));
-
-  // Verify all products exist
-  for (const item of items) {
-    if (!priceMap.has(item.productId)) {
-      return NextResponse.json(
-        { errors: { items: `Product not found: ${item.productId}` } },
-        { status: 400 }
-      );
-    }
-  }
-
   let totalAmount = 0;
   const saleItemsData = items.map((item) => {
-    const unitPrice = priceMap.get(item.productId)!;
-    const subtotal = Number(unitPrice) * item.quantity;
+    const product = productMap.get(item.productId)!;
+    // For Custom Order (price=0), use the member-provided custom price
+    const unitPrice = product.sku === "COMBO-CUSTOM" && item.customPrice
+      ? item.customPrice
+      : Number(product.price);
+    const subtotal = unitPrice * item.quantity;
     totalAmount += subtotal;
     return {
       productId: item.productId,
       quantity: item.quantity,
       unitPrice,
       subtotal,
+      remark: item.remark?.trim() || null,
     };
   });
 

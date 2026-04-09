@@ -3,18 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const CATEGORIES = [
-  "TWO-WHEELER",
-  "CAR/SUV",
-  "CAR/SUV/TRACTOR",
-  "TRACTOR, LCV & HCV",
-  "HCV",
-  "LCV",
-  "3-WHEELER",
-  "3-WHEELER & LCV",
-  "INVERTER",
-  "INVERTER BATTERY",
-];
+const CATEGORIES = ["COMBO"];
 
 interface ProductData {
   id?: string;
@@ -26,6 +15,7 @@ interface ProductData {
   sku: string;
   category: string;
   imageUrl: string;
+  images: string[];
   warranty: string;
   ah: string;
   remark: string;
@@ -50,6 +40,7 @@ export default function ProductForm({
       sku: "",
       category: "",
       imageUrl: "",
+      images: [],
       warranty: "",
       ah: "",
       remark: "",
@@ -96,6 +87,7 @@ export default function ProductForm({
           sku: form.sku || null,
           category: form.category,
           imageUrl: form.imageUrl || null,
+          images: form.images.length > 0 ? form.images : null,
           warranty: form.warranty || null,
           ah: form.ah || null,
           remark: form.remark || null,
@@ -281,27 +273,49 @@ export default function ProductForm({
           />
         </div>
 
-        {/* Image URL */}
+        {/* Combo Images */}
         <div>
-          <label htmlFor="imageUrl" className="mb-1 block text-sm font-medium text-gray-700">
-            Image URL
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Combo Images
           </label>
-          <input
-            id="imageUrl"
-            name="imageUrl"
-            type="text"
-            value={form.imageUrl}
-            onChange={(e) => updateField("imageUrl", e.target.value)}
-            placeholder="/products/example.png"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-            data-testid="input-imageUrl"
-          />
-          {form.imageUrl && (
-            <div className="mt-2">
-              <img src={form.imageUrl} alt="Preview" className="h-20 object-contain rounded border bg-gray-50 p-1" />
+          <p className="text-xs text-gray-400 mb-2">
+            3 images: first is wide (3:2), second and third are square (1:1)
+          </p>
+          {[0, 1, 2].map((idx) => (
+            <div key={idx} className="mb-2">
+              <input
+                type="text"
+                value={form.images[idx] || ""}
+                onChange={(e) => {
+                  const updated = [...form.images];
+                  updated[idx] = e.target.value;
+                  setForm((prev) => ({ ...prev, images: updated }));
+                }}
+                placeholder={idx === 0 ? "Wide image (3:2)" : `Square image ${idx} (1:1)`}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                data-testid={`input-image-${idx}`}
+              />
+            </div>
+          ))}
+          {/* Bento preview */}
+          {form.images.filter(Boolean).length > 0 && (
+            <div className="mt-3 w-64 space-y-1">
+              {form.images[0] && (
+                <img src={form.images[0]} alt="Wide" className="w-full h-40 object-cover rounded-t border bg-gray-50" />
+              )}
+              <div className="flex gap-1">
+                {form.images[1] && (
+                  <img src={form.images[1]} alt="Square 1" className="w-1/2 h-28 object-cover rounded-bl border bg-gray-50" />
+                )}
+                {form.images[2] && (
+                  <img src={form.images[2]} alt="Square 2" className="w-1/2 h-28 object-cover rounded-br border bg-gray-50" />
+                )}
+              </div>
             </div>
           )}
         </div>
+        {/* Legacy Image URL (hidden, auto-set from first image) */}
+        <input type="hidden" value={form.images[0] || form.imageUrl} />
 
         <div className="grid gap-6 sm:grid-cols-3">
           {/* Warranty */}

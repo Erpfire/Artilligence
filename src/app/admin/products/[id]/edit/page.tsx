@@ -32,6 +32,7 @@ export default async function EditProductPage({
           sku: product.sku || "",
           category: product.category || "",
           imageUrl: product.imageUrl || "",
+          images: Array.isArray(product.images) ? product.images as string[] : [],
           warranty: product.warranty || "",
           ah: product.ah || "",
           remark: product.remark || "",
